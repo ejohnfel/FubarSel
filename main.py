@@ -1788,6 +1788,20 @@ def GetPageCount(browser):
     return results
 
 
+def BlankRow(recording):
+    """Check For Blank Row"""
+
+    blank = False
+
+    for column_value in recording.data.values():
+        if column_value is not None and column_value != "":
+            break
+    else:
+        blank = True
+
+    return blank
+
+
 def GetRows(browser):
     """Get Rows from Search"""
 
@@ -1831,6 +1845,10 @@ def GetData(browser, frame_name=None):
             count = 1
             for row in rows:
                 recording = RecordingRecord(row)
+
+                if BlankRow(recording):
+                    DbgMsg(f"Row for appears empty, skipping\n{recording.data}", dbglabel=dbglb)
+                    continue
 
                 if DebugMode() and recording.data is None:
                     DbgMsg("Recording.data is none, why?")
@@ -1962,9 +1980,9 @@ def StalledDownload(browser, rowkey=None):
         while result["present"] and not stalled:
             Quarter()
 
-            results = WaitPresenceCSS(browser, 1, saveBoxCss)
+            result = WaitPresenceCSS(browser, 1, saveBoxCss)
 
-            if results["present"]:
+            if result["present"]:
                 time_passed = datetime.now() - timechk
 
                 if time_passed.seconds > 8:
@@ -2080,7 +2098,13 @@ def ActivateRow(browser, row, rowkey=None):
 
     conditions = {"rowkey": ""}
 
-    ActionChains(browser).move_to_element(row).double_click().perform()
+    try:
+        ActionChains(browser).move_to_element(row).double_click().perform()
+    except Exception as err:
+        ErrMsg(err, "An error occurred while trying to activate a row")
+
+        if DebugMode():
+            breakpoint()
 
     Half()
 
