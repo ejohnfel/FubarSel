@@ -950,15 +950,23 @@ def read_single_keypress():
 """
 
 
-def SafeWrite(*files):
+def SafeIO(*files):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+
+            dbgblk, dbglb = DbgNames(SafeIO)
+
+            DbgEnter(dbgblk, dbglb)
+
             ext = ".protected"
 
             # Protect files from write
             for file in files:
                 pro = f"{file}{ext}"
+
+                if DebugMode() and os.path.exists(pro):
+                    DbgMsg(f"{file} is protected", dbglabel=dbglb)
 
                 while os.path.exists(pro):
                     Sleep(0.1)
@@ -967,14 +975,22 @@ def SafeWrite(*files):
 
             # Files are protected
 
-            results = func(*args, **kwargs)
+            results = None
+
+            try:
+                results = func(*args, **kwargs)
+            except Exception as err:
+                if DebugMode():
+                    ErrMsg(err, "An error occurred while executing decorated function in SafeIO")
 
             # clean up
             for file in args:
-                pro = f"{file}.{ext}"
+                pro = f"{file}{ext}"
 
                 if os.path.exists(pro):
                     os.remove(pro)
+
+            DbgExit(dbgblk, dbglb)
 
             return results
         return wrapper
@@ -1199,7 +1215,7 @@ def LoadRows(filename):
 def AppendRows(filename, row):
     """Append Row To Catalog"""
 
-    @SafeWrite(filename)
+    @SafeIO(filename)
     def AppendRowsInternal(filename, row):
         """Append To File"""
 
@@ -1228,7 +1244,7 @@ def AppendRows(filename, row):
 def SaveRows(filename, rows):
     """Save Recording Catalog"""
 
-    @SafeWrite(filename)
+    @SafeIO(filename)
     def SaveRowsInternal(filename, rows):
         """Save Rows Internal"""
 
@@ -1454,6 +1470,8 @@ def SwitchContext(browser, window, frame=None):
 
     dbgblk, dbglb = DbgNames(SwitchContext)
 
+    DbgEnter(dbgblk, dbglb)
+
     try:
         if window is not None:
             browser.switch_to.window(window)
@@ -1465,6 +1483,8 @@ def SwitchContext(browser, window, frame=None):
         DbgMsg(f"No such frame exception for {frame}", dbglabel=dbglb)
     except Exception as err:
         DbgMsg(f"A generic error occurred when trying to switch context : {err}", dbglabel=dbglb)
+
+    DbgExit(dbgblk, dbglb)
 
 
 def MainContext(browser):
@@ -1796,7 +1816,7 @@ def GetData(browser, frame_name=None):
                     loaded = recording.data.get("Loaded", "xxx")
                     retry = False
                 except Exception as err:
-                    Msg(f"Checking for 'Loaded' column seems to have failed : {err}")
+                    Msg(f"Checking for 'Loaded' column seems to have failed : {err}", dbglabel=dbglb)
                     retry = True if retry_count < retries else False
                     retry_count += 1
 
@@ -1808,10 +1828,11 @@ def GetData(browser, frame_name=None):
                 elif loaded == norecs:
                     DbgMsg("No data for this time frame", dbglabel=dbglb)
                 else:
-                    DbgMsg("Something other than no data rows has happened", dbglabel=dbglb)
+                    DbgMsg(f"Something other than no data rows has happened for processed item {count}", dbglabel=dbglb)
+                    DbgMsg(f"Record is\n{recording.data}", dbglabel=dbglb)
 
                 if BreakpointCheck(nobreak=True) and DebugMode():
-                    DbgMsg(f"In {dbglb} when manual breakpoint detected")
+                    DbgMsg(f"In {dbglb} when manual breakpoint detected", dbglabel=dbglb)
                     breakpoint()
     except Exception as err:
         ErrMsg(err, "An error occurred while trying to process rows from the search")
@@ -1997,7 +2018,7 @@ def WarningMsg(browser, rowkey=None):
 
                 DbgMsg(f"Visibility\t: {vismsg}", dbglabel=dbglb)
                 DbgMsg(f"Enabled\t: {enamsg}", dbglabel=dbglb)
-                DbgMsg(f"With Msg\t: {errmesg}")
+                DbgMsg(f"With Msg\t: {errmesg}", dbglabel=dbglb)
         else:
             DbgMsg(f"Warning is not present for {rowkey}", dbglabel=dbglb)
     except StaleElementReferenceException as s_err:
@@ -2026,11 +2047,11 @@ def ActivateRow(browser, row, rowkey=None):
     dbgblk, dbglb = DbgNames(ActivateRow)
 
     DbgEnter(dbgblk, dbglb)
-    DbgMsg(f"Attempting to activate {rowkey}")
+    DbgMsg(f"Attempting to activate {rowkey}", dbglabel=dbglb)
 
     success = True
 
-    conditions = {"rowkey" : ""}
+    conditions = {"rowkey": ""}
 
     ActionChains(browser).move_to_element(row).double_click().perform()
 
@@ -2621,6 +2642,8 @@ def BatchDownloading(browser, downloadpath):
                 recording_we_want = vrec.SelectForDownload()
 
                 if recording_we_want:
+                    DbgMsg(f"Recording {recording.data['Conversation ID']} will be downloaded", dbglabel=dbglb)
+
                     # Only allow for X number of simultaneousDownloads
                     if Download(browser, vrec, mainFrame):
                         success = vrec.GetDownloadInfo(browser, downloadTab)
@@ -2632,6 +2655,7 @@ def BatchDownloading(browser, downloadpath):
                         vrec.AddToBad()
                         Msg(f"Download for recording {recording.data['Conversation ID']} had an error")
                 else:
+                    DbgMsg(f"Recording {recording.data['Conversation ID']} will be skipped", dbglabel=dbglb)
                     continue
 
                 BreakpointCheck()
