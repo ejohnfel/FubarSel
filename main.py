@@ -1764,6 +1764,30 @@ def ClosePopOut(browser, frame_name=None):
     DbgExit(dbgblk, dbglabel=dbglb)
 
 
+def GetPageCount(browser):
+    """Get Search Results Page Count"""
+
+    pagecountCss = "span[class='ui-paginator-current']"
+    expr = r"^(?P<start>\d+)\s+-\s+(?P<end>\d+)\s+of\s+(?P<total>\d+)$"
+
+    pageCountSpan = ByCSS(browser, pagecountCss)
+
+    results = (0, 0, -1)
+
+    if pageCountSpan is not None:
+        matches = re.search(expr, pageCountSpan.text)
+        #matches = re.search(expr, pageCountSpan.value)
+
+        if matches is not None:
+            start = int(matches.group("start"))
+            end = int(matches.group("end"))
+            total = int(matches.group("total"))
+
+            results = (start, end, total)
+
+    return results
+
+
 def GetRows(browser):
     """Get Rows from Search"""
 
@@ -1890,21 +1914,23 @@ def WaitPresenceCSS(browser, timeout, selector):
     resultset["item"] = None
 
     try:
+        DbgMsg(f"Waitng for : {selector}", dbglabel=dbglb)
         WebDriverWait(browser, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
         resultset["present"] = True
 
         resultset["item"] = browser.find_element(By.CSS_SELECTOR, selector)
     except TimeoutException as t_err:
         resultset["timeout"] = True
-        resultset["error"] = (True,t_err)
+        resultset["error"] = (True, t_err)
     except NoSuchElementException as ns_err:
         resultset["nosuchelement"] = True
-        resultset["error"] = (True,ns_err)
+        resultset["error"] = (True, ns_err)
     except StaleElementReferenceException as s_err:
         resultset["stale"] = True
-        resultset["error"] = (True,s_err)
+        resultset["error"] = (True, s_err)
     except Exception as err:
         resultset["error"] = (True, err)
+        DbgMsg(f"Unexpected exception : {err}", dbglabel=dbglb)
 
     DbgExit(dbgblk, dbglb)
 
@@ -2626,6 +2652,10 @@ def BatchDownloading(browser, downloadpath):
 
         # Conduct a search between the given dates
         Search(browser, startDate, endDate)
+
+        Half()
+
+        paginationInfo = GetPageCount(browser)
 
         # Now, download the results X at a time and remember to page until you can't page anymore
         while True:
