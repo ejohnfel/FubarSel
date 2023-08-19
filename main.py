@@ -1914,7 +1914,8 @@ def WaitPresenceCSS(browser, timeout, selector):
     resultset["item"] = None
 
     try:
-        DbgMsg(f"Waitng for : {selector}", dbglabel=dbglb)
+        DbgMsg(f"Waiting for : {selector}", dbglabel=dbglb)
+
         WebDriverWait(browser, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
         resultset["present"] = True
 
@@ -1930,7 +1931,7 @@ def WaitPresenceCSS(browser, timeout, selector):
         resultset["error"] = (True, s_err)
     except Exception as err:
         resultset["error"] = (True, err)
-        DbgMsg(f"Unexpected exception : {err}", dbglabel=dbglb)
+        DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
 
     DbgExit(dbgblk, dbglb)
 
