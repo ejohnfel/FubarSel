@@ -2473,6 +2473,10 @@ def Download(browser, voice_recording, frame_name=None):
         DbgMsg(f"Rowkey, {rowkey}, matches for breakpoint", dbglabel=dbglb)
         breakpoint()
 
+    if BreakpointCheck(nobreak=True) and DebugMode():
+        DbgMsg("A manual breakpoint was detected... and so I am breakpointing, probably should check the stalled thingy")
+        breakpoint()
+
     lastprocessed = voice_recording
 
     DbgExit(dbgblk, dbglb)
