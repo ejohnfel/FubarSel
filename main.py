@@ -2002,10 +2002,19 @@ def StalledDownload(browser, rowkey=None):
                     cancelBtn = ByCSS(browser, btnCancelCss)
                     progress = ByCSS(browser, prepPerCss)
 
-                    if cancelBtn is not None and progress is not None:
+                    if cancelBtn is not None and progress is not None and time_passed.seconds <= 10:
                         if progress.text == "0%":
                             cancelBtn.click()
                             stalled = True
+                        elif progress.text == "":
+                            try:
+                                # LAst ditch chance to complete d/l
+                                okBtn = ByCSS(btnOkCSS)
+
+                                obBtn.click()
+                                DbgMsg("Came across case where save dialog was up and not stalled")
+                            except Exception as err:
+                                DbgMsg("Save dialog stalled or not, can't tell")
                     elif time_passed.seconds > 10:
                         stalled = True
                         if cancelBtn is not None:
@@ -2418,9 +2427,12 @@ def BeginDownload(browser, vrec=None):
 
             okBtn = ByCSS(browser, okBtnCss)
 
+            Half()
+
             okBtn.click()
         else:
             success = False
+            Half()
             cancelBtn.click()
 
         Half()
