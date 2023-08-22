@@ -19,6 +19,8 @@ import inspect
 import functools
 import ait
 import py_helper as ph
+import requests
+import urllib
 
 # My Stuff
 from py_helper import CmdLineMode, DebugMode, DbgMsg, Msg, DbgEnter, DbgExit, DebugMe, DbgNames, DbgAuto, ErrMsg
@@ -1565,17 +1567,28 @@ def SetupBrowser(browser, url):
     browser.get(url)
 
 
-def DownloadOptions(folderPath):
+def DownloadOptions(folderPath, withcaps= False):
     """Set Browser Download Path"""
 
     options = Options()
 
-    options.add_experimental_option("prefs", {
+    if withcaps:
+        # options.set_capability("browserVersion", "latest")
+        # options.set_capability("platformName", "linux")
+        options.set_capability("platformName", "Windows 10")
+
+        # Folder path removed here for Grid system, can be added back in if path exists
+        options.add_experimental_option("prefs", {
+        "download.prompt_for_download": False,
+        "download.directory_upgrade": True,
+        "safebrowsing.enabled": True})
+    else:
+        options.add_experimental_option("prefs", {
         "download.default_directory": folderPath,
         "download.prompt_for_download": False,
         "download.directory_upgrade": True,
-        "safebrowsing.enabled": True
-    })
+        "safebrowsing.enabled": True})
+
     options.add_argument('ignore-certificate-errors')
 
     return options
@@ -2867,6 +2880,8 @@ def GeteBook(browser):
     SetupBrowser(browser, config["packt"]["url1"])
     #SetupBrowser(browser, "https://account.packtpub.com/login?returnUrl=referrer")
 
+    Sleep(20)
+
     packtTab, downloadsTab = OpenDownloadsTab(browser)
 
     usernameBox = browser.find_element(By.CSS_SELECTOR, "input[name='email']")
@@ -3093,7 +3108,7 @@ if __name__ == '__main__':
         config.read(configFilename)
     else:
         Msg(f"Supplied or default config file does not exist, {configFilename}/{args.config}")
-        quit()
+        #quit()
 
     urls = {
         "packt": "https://www.packtpub.com/free-learning/",
@@ -3220,8 +3235,13 @@ if __name__ == '__main__':
         if args.clearlog:
             os.remove(runlog)
 
-        options = DownloadOptions(downloadPath)
-        chrome = webdriver.Chrome(options=options)
+        # Example of downloading a file
+        # urllib.request.urlretrieve(src,downloadpath)
+
+        options = DownloadOptions(downloadPath, withcaps=True)
+        #chrome = webdriver.Chrome(options=options)
+
+        chrome = webdriver.Remote(command_executor="http://merry.digitalwicky.biz:4444", options=options)
 
         GeteBook(chrome)
     else:
