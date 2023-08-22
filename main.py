@@ -1738,6 +1738,25 @@ def BusySpinnerPresent(browser, closeit=False):
     return busyFlag
 
 
+def PopoutPresent(browser, timeout=5):
+    """Check to see if Popout is Present"""
+
+    dbgblk, dbglb = DbgNames(PopoutPresent)
+
+    DbgEnter(dbgblk, dbglb)
+
+    italicsCss = "div[id='rightContent'] > table[id='aswpwfteapte42'] > tbody > tr > td > i[id='aswpwfteapte32']"
+    italicsXpath = "//div[@id='rightContent']/table[@id='aswpwfteapte42']/tbody/tr/td/i[@id='aswpwfteapte32']"
+
+    results = WaitPresenceCSS(browser, timeout, italicsCss)
+
+    success = results["present"]
+
+    DbgExit(dbgblk, dbglb)
+
+    return success
+
+
 def ClosePopOut(browser, frame_name=None):
     """Close that fucking annoying pop out"""
 
@@ -1745,19 +1764,26 @@ def ClosePopOut(browser, frame_name=None):
 
     DbgEnter(dbgblk, dbglabel=dbglb)
 
-    if frame_name is not None:
-        Half()
-        # browser.switch_to.frame(frame_name)
-
     MainContext(browser)
+
+    Second()
 
     italicsCss = "div[id='rightContent'] > table[id='aswpwfteapte42'] > tbody > tr > td > i[id='aswpwfteapte32']"
     italicsXpath = "//div[@id='rightContent']/table[@id='aswpwfteapte42']/tbody/tr/td/i[@id='aswpwfteapte32']"
 
+    success = False
+
     try:
         Half()
 
-        WebDriverWait(browser, 5).until(presence_of_element_located((By.CSS_SELECTOR, italicsCss)))
+        count = 0
+
+        while not PopoutPresent(browser) and count < 2:
+            Half()
+            count += 1
+
+        if count > 1:
+            raise NoSuchElementException("Popout didn't appear and this exception was raised while looking for it")
 
         Half()
 
@@ -1765,8 +1791,15 @@ def ClosePopOut(browser, frame_name=None):
         # italics = browser.find_element(By.CSS_SELECTOR, italicsCss)
 
         if italics.is_displayed():
+            Half()
             DbgMsg("Trying to close/click Popout", dbglabel=dbglb)
             italics.click()
+            DbgMsg("Popout should be closed", dbglabel=dbglb)
+            Half()
+
+            success = True
+    except NoSuchElementException as err_nse:
+        DbgMsg(f"No such element, {italicsCss} present", dbglabel=dbglb)
     except StaleElementReferenceException:
         DbgMsg(f"Stale element exception when trying to clear pop out", dbglabel=dbglb)
     except TimeoutException:
@@ -1775,6 +1808,8 @@ def ClosePopOut(browser, frame_name=None):
         Msg(f"Generic error trying to clear pop out {err}")
 
     DbgExit(dbgblk, dbglabel=dbglb)
+
+    return success
 
 
 def GetPageCount(browser):
@@ -1822,13 +1857,13 @@ def GetRows(browser):
 
     # DbgEnter(dbgblk, dbglb)
 
-    rows = browser.find_elements(By.CSS_SELECTOR, "div[class='ui-datatable-scrollable-body'] > table > tbody > tr")
+    rows = browser.find_elements(By.CSS_SELECTOR, "div[class='ui-datatable-scrollable-body'] > table > tbody[id='masterTable:ascTable_data'] > tr")
 
     # DbgExit(dbgblk, dbglb)
 
     return rows
 
-
+@Eventing("Entering GetData", "Exiting GetData")
 def GetData(browser, frame_name=None):
     """Get Data"""
 
@@ -1837,9 +1872,14 @@ def GetData(browser, frame_name=None):
     DbgEnter(dbgblk, dbglb)
 
     if frame_name is not None:
+        Event("Switching frame")
         SwitchFrame(browser, frame_name)
 
-    ClosePopOut(browser)
+    Event("Closing popout")
+    if ClosePopOut(browser):
+        Event("Appears Popout was closed")
+    else:
+        Event("Appears Popout WAS NOT closed for some reason")
 
     Msg("************* >>>>>>>>>>>>> Getting Rows <<<<<<<<<<<<<")
 
@@ -1850,14 +1890,20 @@ def GetData(browser, frame_name=None):
     retry = True
 
     try:
+        Event("Entering try-while block")
         while retry:
+            Event("Getting rows")
             rows = GetRows(browser)
 
             records = list()
 
+            Event("fRetrieved {len(rows)}")
+
             count = 1
             for row in rows:
                 recording = RecordingRecord(row)
+
+                Event(f"Processing {recording.rowkey}")
 
                 if BlankRow(recording):
                     DbgMsg(f"Row for appears empty, skipping\n{recording.data}", dbglabel=dbglb)
@@ -1868,8 +1914,10 @@ def GetData(browser, frame_name=None):
                     breakpoint()
 
                 try:
+                    Event("Checking for blanks, ie. no search results")
                     loaded = recording.data.get("Loaded", "xxx")
                     retry = False
+                    Event("Checking for no search results seems to have succeeded")
                 except Exception as err:
                     Msg(f"Checking for 'Loaded' column seems to have failed : {err}", dbglabel=dbglb)
                     retry = True if retry_count < retries else False
@@ -1890,6 +1938,7 @@ def GetData(browser, frame_name=None):
                     DbgMsg(f"In {dbglb} when manual breakpoint detected", dbglabel=dbglb)
                     breakpoint()
     except Exception as err:
+        PrintEvents()
         ErrMsg(err, "An error occurred while trying to process rows from the search")
 
         if DebugMode():
