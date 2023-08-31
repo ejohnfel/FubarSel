@@ -503,15 +503,36 @@ class edom(object):
 
         return vals
 
-    def get(self, attr_name, altvalue=None):
-        result = altvalue
+    def get(self, attr_name, alt_value=None):
+        result = alt_value
 
         try:
             result = self._wrapped_obj.get_attribute(attr_name)
 
-            if result == None:
-                result = altvalue
-        except:
+            if result is None:
+                result = alt_value
+        except Exception as err:
+            result = None
+
+        return result
+
+    def properties(self):
+        props = [ "checked" ]
+
+        vals = dict()
+
+        for prop in props:
+            vals[prop] = self._wrapped_obj.get_property(prop)
+
+    def get_prop(self, prop_name, alt_value=None):
+        result = alt_value
+
+        try:
+            result = self._wrapped_obj.get_property(prop_name)
+
+            if result is None:
+                result = alt_value
+        except Exception as err:
             result = None
 
         return result
@@ -703,8 +724,12 @@ class VoiceDownload:
         self.is_bad = True
 
         if not self.InBad():
-            with open(badRecordings, "at") as bad:
-                bad.write(f"{self.ConversationID()}\n")
+            with open(badRecordings, "at", newline='') as bad:
+                writer = csv.writer(bad)
+
+                row = [ self.ConversationID(), self.Timestamp() ]
+
+                writer.writerow(row)
 
     def InBad(self):
         """Check Bad List"""
@@ -713,9 +738,11 @@ class VoiceDownload:
         is_bad = False
 
         if os.path.exists(badRecordings):
-            with open(badRecordings, "rt") as bad:
-                for item in bad:
-                    if item.strip() == convoid:
+            with open(badRecordings, "rt", newline='') as bad:
+                reader = csv.reader(bad)
+                for row in reader:
+                    convo_rec, timestamp = row
+                    if convo_rec == convoid:
                         is_bad = True
                         break
 
@@ -761,6 +788,7 @@ class VoiceDownload:
 # Variables
 
 downloadPathASC = r"S:\Backups\asc"
+sessionASC = f"{downloadPathASC}\session1"
 downloadPathPackt = r"Y:\media\eBooks\Packt\freebies"
 
 downloadPath = None
@@ -780,9 +808,9 @@ runlogName = "runlog.txt"
 badrecordingsName = "bad_recordings.txt"
 catalogfileName = "recordings_catalog.txt"
 
-configFilename = os.path.join(downloadPathASC, ConfigFile)
-catalogFilename = os.path.join(downloadPathASC, catalogfileName)
-badRecordings = os.path.join(downloadPathASC, badrecordingsName)
+configFilename = os.path.join(sessionASC, ConfigFile)
+catalogFilename = os.path.join(sessionASC, catalogfileName)
+badRecordings = os.path.join(sessionASC, badrecordingsName)
 
 # Date Intervals
 officialStart = datetime(2017, 1, 1, 0, 0, 0)
@@ -1379,12 +1407,14 @@ def Refresh(browser):
     browser.refresh()
 
 
-def ByCSS(browser, css):
+def ByCSS(browser, css, msg=''):
     """Get By CSS Shortcut"""
 
     dbgblk, dbglb = DbgNames(ByCSS)
 
     DbgEnter(dbgblk, dbglb)
+
+    DbgMsg(f"Searching for : {css} / {msg}", dbglabel=dbglb)
 
     item = None
 
@@ -1404,8 +1434,14 @@ def ByCSS(browser, css):
     return item
 
 
-def MultiByCSS(browser, css):
+def MultiByCSS(browser, css, msg=''):
     """Multi Get By CSS Shortcut"""
+
+    dbgblk, dbglb = DbgNames(MultiByCSS)
+
+    DbgEnter(dbgblk, dbglb)
+
+    DbgMsg(f"Searching for : {css} / {msg}", dbglabel=dbglb)
 
     items = list()
 
@@ -1420,15 +1456,19 @@ def MultiByCSS(browser, css):
     except Exception as err:
         Msg(f"A generic error occurred while waiting or looking for a warning popup : {err}")
 
+    DbgExit(dbgblk, dbglb)
+
     return items
 
 
-def ByXPATH(browser, xpath):
+def ByXPATH(browser, xpath, msg=''):
     """Get By XPATH Shortcut"""
 
     dbgblk, dbglb = DbgNames(ByXPATH)
 
     DbgEnter(dbgblk, dbglb)
+
+    DbgMsg(f"Searching for : {xpath} / {msg}", dbglabel=dbglb)
 
     item = None
 
@@ -1448,8 +1488,14 @@ def ByXPATH(browser, xpath):
     return item
 
 
-def MultiByXPATH(browser, xpath):
+def MultiByXPATH(browser, xpath, msg=''):
     """Multi Get By XPATH Shortcut"""
+
+    dbgblk, dbglb = DbgNames(MultiByXPATH)
+
+    DbgEnter(dbgblk, dbglb)
+
+    DbgMsg(f"Searching for : {xpath} / {msg}", dbglabel=dbglb)
 
     items = list()
 
@@ -1463,6 +1509,8 @@ def MultiByXPATH(browser, xpath):
         Msg("Stale element exception")
     except Exception as err:
         Msg(f"A generic error occurred while waiting or looking for a warning popup : {err}")
+
+    DbgExit(dbgblk, dbglb)
 
     return items
 
@@ -1897,7 +1945,7 @@ def GetData(browser, frame_name=None):
 
             records = list()
 
-            Event("fRetrieved {len(rows)}")
+            Event(f"Retrieved {len(rows)}")
 
             count = 1
             for row in rows:
@@ -2083,7 +2131,7 @@ def WarningMsg(browser, rowkey=None):
     dbgblk, dbglb = DbgNames(WarningMsg)
 
     DbgEnter(dbgblk, dbglb)
-    DbgMsg(f"Checking for warning on {rowkey}")
+    DbgMsg(f"Checking for warning on {rowkey}", dbglabel=dbglb)
 
     conditions = {"rowkey":""}
 
@@ -2456,7 +2504,7 @@ def BeginDownload(browser, vrec=None):
 
     # Will Bring up dialog
     audioInputDis = None
-    audioInput = ByCSS(browser, mediaSrcsAudioCss)
+    audioInput = ByCSS(browser, mediaSrcsAudioCss, msg="AKA mediaSources Inputbox")
 
     if audioInput is None:
         audioInputDis = ByCSS(browser, mediaSrcsAudioCssDis)
@@ -2470,7 +2518,16 @@ def BeginDownload(browser, vrec=None):
     try:
         if audioInputDis is None and audioInput is not None and audioInput.is_displayed() and audioInput.is_enabled():
             audioEnabled = True
-            audioInput.click()
+
+            aiObj = edom(audioInput)
+
+            count = 0
+
+            while not aiObj.get_prop("checked", False) and count < 3:
+                Half()
+                audioInput.click()
+
+                count += 1
 
             Half()
 
@@ -2500,7 +2557,7 @@ def BeginDownload(browser, vrec=None):
     return success
 
 
-def Download(browser, voice_recording, frame_name=None):
+def Download(browser, voice_recording, frame_name=None, rows=None):
     """Download Recording"""
 
     global global_temp, lastprocessed
@@ -2526,6 +2583,9 @@ def Download(browser, voice_recording, frame_name=None):
         SwitchFrame(browser, frame_name)
 
     try:
+        if PopoutPresent(browser, timeout=1):
+            ClosePopOut(browser, frame_name)
+
         stalled = StalledDownload(browser, rowkey=last_rowkey)
 
         if stalled:
@@ -2565,6 +2625,7 @@ def Download(browser, voice_recording, frame_name=None):
             recording.data["Expanded"] = "Warning received before download"
             AppendRows(catalogFilename, recording.data)
     except Exception as err:
+        # check rowkey and list of rows
         Msg(f"Could not activate row with rowkey {rowkey} : {err}")
 
     if BreakWhen(conditions, rowkey=rowkey):
@@ -2687,32 +2748,6 @@ def CheckActiveDownloads(browser, downloadTab, activeDownloads, downloadCount, s
     return completedCount
 
 
-"""
-Downloading Process
-BatchDownloading ->
-    while dates ->
-        Search
-        for items ->
-           VoiceDownload obj
-           If we want it ->
-            Download item
-                Checked for Stalled
-                Activate ->
-                    Check for Warning
-                    Stop Player
-                If active ->
-                    BeginDownload
-                Else
-                    Mark Damaged
-        CheckActive DLs
-        
-        Next Dates
-    CheckActive DLs
-
-CheckActive DLs
-"""
-
-
 def BatchDownloading(browser, downloadpath):
     """Download Items"""
 
@@ -2778,7 +2813,7 @@ def BatchDownloading(browser, downloadpath):
                     DbgMsg(f"Recording {recording.data['Conversation ID']} will be downloaded", dbglabel=dbglb)
 
                     # Only allow for X number of simultaneousDownloads
-                    if Download(browser, vrec, mainFrame):
+                    if Download(browser, vrec, mainFrame, data):
                         success = vrec.GetDownloadInfo(browser, downloadTab)
 
                         if success:
@@ -2795,6 +2830,8 @@ def BatchDownloading(browser, downloadpath):
                 CheckForEarlyTerminate()
 
                 completed += CheckActiveDownloads(browser, downloadTab, activeDownloads, simultaneousDownloads, 1.25)
+
+            del data
 
             nextBtn = browser.find_element(By.CSS_SELECTOR, nextButtonCss)
 
@@ -2851,12 +2888,6 @@ def GetVoiceRecordings(browser, url, downloadpath):
     # Setup the Browser (i.e. Navigate to URL)
     SetupBrowser(browser, url)
 
-    # Make us bigggggg
-    # Maximize(browser)
-
-    # Get past bad cert
-    #BadCert(browser)
-
     # Cancel Login Dialog (Via Ait)
     CancelDialog()
 
@@ -2872,16 +2903,8 @@ def GetVoiceRecordings(browser, url, downloadpath):
         if doPOC:
             POC(browser)
         else:
-            #recordingsCatalog = LoadRows(catalogFilename)
-
             SwitchFrame(browser, mainFrame)
             BatchDownloading(browser, downloadpath)
-
-            #SaveRows(catalogFilename, recordingsCatalog)
-
-        if DebugMode():
-            DbgMsg("<<< Last breakpoint before termination >>>")
-            breakpoint()
 
         SmartLogout(browser)
 
@@ -3130,6 +3153,7 @@ def BuildParser():
     parser.add_argument("--cleanzips", action="store_true", help="Clear Zip Archives from download folder")
     parser.add_argument("-d", "--debug", action="store_true", help="Enter debug mode")
     parser.add_argument("-q", "--quit", action="store_true", help="Early quit")
+    parser.add_argument("-s", "--session", default="session1", help="Session name")
     parser.add_argument("--term", action="store_true", help="Force an early terminate")
     parser.add_argument("--bp", action="store_true", help="Force a manual breakpoint")
     parser.add_argument("--int", help=f"Interval in days, between searches, default = {interval.days}")
@@ -3162,6 +3186,8 @@ if __name__ == '__main__':
 
     if args.debug:
         DebugMode(True)
+
+    sessionName = args.session
 
     if args.config is not None and os.path.exists(args.config):
         config.read(args.config)
@@ -3197,19 +3223,22 @@ if __name__ == '__main__':
         Password = config["asc_creds"]["password"]
 
         downloadPath = config["asc"]["downloadpath"]
+
+        sessionASC = config[sessionName]["logpath"]
+
         interval_days = int(config["asc"]["interval"])
         interval = timedelta(days=interval_days)
         catalogfileName = config["asc"]["catalogfile"]
         badrecordingsName = config["asc"]["badrecordings"]
 
-        catalogFilename = os.path.join(downloadPath, catalogfileName)
-        badRecordings = os.path.join(downloadPath, badrecordingsName)
+        catalogFilename = os.path.join(sessionASC, catalogfileName)
+        badRecordings = os.path.join(sessionASC, badrecordingsName)
 
-        earlyTerminateFlag = Join(downloadPath, "terminate.txt")
-        breakpointFlag = Join(downloadPath, "breakpoint.txt")
+        earlyTerminateFlag = Join(sessionASC, "terminate.txt")
+        breakpointFlag = Join(sessionASC, "breakpoint.txt")
         RemoveFile(breakpointFlag, earlyTerminateFlag)
 
-        ph.Logfile = runlog = Join(downloadPath, runlogName)
+        ph.Logfile = runlog = Join(sessionASC, runlogName)
 
         if args.term:
             ph.Touch(earlyTerminateFlag)
