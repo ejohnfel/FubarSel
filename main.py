@@ -1936,6 +1936,7 @@ def GetData(browser, frame_name=None):
     retries = 1
     retry_count = 0
     retry = True
+    last_rowkey = None
 
     try:
         Event("Entering try-while block")
@@ -1951,7 +1952,8 @@ def GetData(browser, frame_name=None):
             for row in rows:
                 recording = RecordingRecord(row)
 
-                Event(f"Processing {recording.rowkey}")
+                last_rowkey = recording.rowkey
+                Event(f"Processing {last_rowkey}")
 
                 if BlankRow(recording):
                     DbgMsg(f"Row for appears empty, skipping\n{recording.data}", dbglabel=dbglb)
@@ -1989,9 +1991,9 @@ def GetData(browser, frame_name=None):
         PrintEvents()
         ErrMsg(err, "An error occurred while trying to process rows from the search")
 
+
         if DebugMode():
-            DbgMsg("Something went very wrong", dbglabel=dbglb)
-            breakpoint()
+            DbgMsg(f"Last {last_rowkey} could not be processed", dbglabel=dbglb)
 
     DbgExit(dbgblk, dbglb)
 
