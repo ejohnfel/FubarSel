@@ -3239,7 +3239,7 @@ if __name__ == '__main__':
 
         downloadPath = config["asc"]["downloadpath"]
 
-        sessionASC = config[sessionName]["logpath"]
+        sessionASC = config.get(sessionName, "logpath", fallback=sessionASC)
 
         interval_days = int(config["asc"]["interval"])
         interval = timedelta(days=interval_days)
@@ -3285,8 +3285,19 @@ if __name__ == '__main__':
         if args.start is not None:
             officialStart = tsc.ConvertTimestamp(args.start)
             officialEnd = officialStart + timedelta(days=365)
-        if args.end is not None:
+        else:
+            officialStart = tsc.ConvertTimestamp(config.get(sessionName, "start", fallback="1/1/2017"))
+            officialEnd = officialStart + timedelta(days=365)
+
+        if args.end is not None and args.start is not None:
             officialEnd = tsc.ConvertTimestamp(args.end)
+        else:
+            value = config.get(sessionName,"end", fallback=None)
+
+            if value is None:
+                officialEnd = officialStart + timedelta(days=365)
+            else:
+                officialEnd = tsc.ConvertTimestamp(value)
 
         if args.env:
             Msg("Environment\n============")
