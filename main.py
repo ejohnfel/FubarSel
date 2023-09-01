@@ -3197,6 +3197,7 @@ if __name__ == '__main__':
         DebugMode(True)
 
         if os.path.exists("dbglabels.txt"):
+            DbgMsg("Loading Debug Label Enablement file")
             ph.LoadDebugEnableFile("dbglabels.txt")
     else:
         DebugMode(False)
