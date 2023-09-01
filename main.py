@@ -2422,7 +2422,7 @@ def Search(browser, startDate, endDate):
         Half()
 
         try:
-            Event("Beginning Search")
+            Event(f"Beginning Search between {startDate} and {endDate}")
 
             WebDriverWait(browser, 5).until(presence_of_element_located(
                 (By.CSS_SELECTOR, "input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarOne_input']")))
@@ -2446,6 +2446,8 @@ def Search(browser, startDate, endDate):
             startInput.send_keys(startDate.strftime("%m/%d/%Y %I:%M:%S %p"))
             endInput.clear()
             endInput.send_keys(endDate.strftime("%m/%d/%Y %I:%M:%S %p"))
+
+            DbgMsg(f"Conducting search between {startDate} and {endDate}", dbglabel=dbglb)
 
             # Start Search
             searchBtn.click()
@@ -2607,6 +2609,8 @@ def Download(browser, voice_recording, frame_name=None, rows=None):
         if success:
             # Begin Download
             global_temp = ("activation succeeded", rowkey)
+
+            DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel=dbglb)
 
             if not BeginDownload(browser, vrec=voice_recording):
                 global_temp = ("save failed", rowkey)
@@ -2785,6 +2789,8 @@ def BatchDownloading(browser, downloadpath):
 
     activeDownloads = list()
 
+    DbgMsg(f"Starting run between {startDate} and {officialEnd}", dbglabel=dbglb)
+
     while startDate < officialEnd:
         endDate = startDate + searchInterval
 
@@ -2853,6 +2859,7 @@ def BatchDownloading(browser, downloadpath):
                 break
 
         Refresh(browser)
+        Sleep(10.0)
 
         startDate = endDate + correction
         endDate = (startDate + searchInterval)
@@ -3188,6 +3195,11 @@ if __name__ == '__main__':
 
     if args.debug:
         DebugMode(True)
+
+        if os.path.exists("dbglabels.txt"):
+            ph.LoadDebugEnableFile("dbglabels.txt")
+    else:
+        DebugMode(False)
 
     sessionName = args.session
 
