@@ -2858,8 +2858,10 @@ def BatchDownloading(browser, downloadpath):
 
                 break
 
+        Sleep(5.0)
+        DbgMsg("Refreshing browser instance", dbglabel=dbglb)
         Refresh(browser)
-        Sleep(10.0)
+        Sleep(8.0)
 
         startDate = endDate + correction
         endDate = (startDate + searchInterval)
