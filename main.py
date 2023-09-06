@@ -1758,7 +1758,7 @@ class ASCBrowser(Browser):
                     # Now, make sure the D/Ls that are currently running complete
 
                     if len(activeDownloads) > 0:
-                        completed += self.CheckActiveDownloads(self.downloadTab, activeDownloads, 1, 0)
+                        completed += self.CheckActiveDownloads(activeDownloads, 1, 0)
 
                     present = self.BusySpinnerPresent(True)
 
