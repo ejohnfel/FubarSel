@@ -1766,7 +1766,7 @@ class ASCBrowser(Browser):
 
             self.Sleep(5.0)
             DbgMsg("Refreshing browser instance", dbglabel=dbglb)
-            self.Refresh(browser)
+            self.Refresh()
             self.Sleep(8.0)
 
             startDate = endDate + correction
