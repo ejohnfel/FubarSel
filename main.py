@@ -39,8 +39,1787 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.expected_conditions import *
 
+# Eventing Stuff
+
+def Event(comment):
+    """Register An Event"""
+
+    global EventList
+
+    if EventList is not None and comment is not None:
+        EventList.append(comment)
+
+
+def ClearEvents():
+    """Clear Event List"""
+
+    global EventList
+
+    if EventList is not None:
+        EventList.clear()
+
+
+def PrintEvents():
+    """Print Events"""
+
+    global EventList
+
+    if EventList is not None:
+        for message in EventList:
+            Msg(message)
+
+
+def Eventing(start_message, end_message=None, leave=False):
+    """Eventing Decorator"""
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            ClearEvents()
+
+            Event(start_message)
+
+            results = func(*args, **kwargs)
+
+            Event(end_message)
+
+            if not leave:
+                ClearEvents()
+
+            return results
+        return wrapper
+    return decorator
+
 
 # Classes
+
+class SleepShortCuts:
+    """Sleep Shortcuts"""
+
+    def Sleep(self, interval=1):
+        """Sleep given interval"""
+
+        time.sleep(interval)
+
+    def Tenth(self):
+        """Sleep 1/10th of a Second"""
+
+        self.Sleep(0.10)
+
+    def Quarter(self):
+        """Sleep Quarter Second"""
+
+        self.Sleep(0.25)
+
+    def Half(self):
+        """Sleep Half Second"""
+
+        self.Sleep(0.5)
+
+    def Second(self):
+        """Sleep a Second"""
+
+        self.Sleep()
+
+
+class Browser(SleepShortCuts):
+    """Browser Instance Class"""
+
+    browser = None
+    options = None
+
+    downloadPath = None
+
+    url = None
+    session_id = None
+
+    def __init__(self, url, download_path):
+        """Initialize Instance"""
+
+        self.downloadPath = download_path
+
+        self.options = DownloadOptions(download_path)
+        self.browser = webdriver.Chrome(options=self.options)
+        self.Get(url)
+
+    def Maximize(self):
+        """Maximize Browser Windows Helper"""
+
+        self.browser.maximize_window()
+
+    def Refresh(self):
+        """Refresh Browser Window"""
+
+        self.browser.refresh()
+
+    def Reconnect(self):
+        """Reconnect to lost session"""
+
+        browser2 = webdriver.Remote(command_executor=self.url)
+
+        if browser2.session_id != self.session_id:
+            browser2.close()
+            browser2.quit()
+
+        browser2.session_id = self.session_id
+
+        self.browser = browser2
+
+    def Windows(self):
+        """Show all window ID's and currently selected window"""
+
+        Msg("All Window Handles\n==================")
+        for handle in self.browser.window_handles:
+            Msg(handle)
+
+        Msg(f"Present Window : {self.browser.current_window_handle}")
+
+    def ByType(self, searchType, path, msg="None"):
+        """Search Single By Supplied Type"""
+
+        dbgblk, dbglb = DbgNames(self.ByType)
+
+        DbgEnter(dbgblk, dbglb)
+
+        DbgMsg(f"Searching for : {path} / {msg}", dbglabel=dbglb)
+
+        item = None
+
+        try:
+            if searchType == By.CSS_SELECTOR:
+                item = self.ByCSS(path)
+            else:
+                item = self.ByXPATH(path)
+        except TimeoutException:
+            DbgMsg("Timeout reached exception", dbglabel=dbglb)
+        except NoSuchElementException:
+            DbgMsg("No such element exception", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg("Stale element exception", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return item
+
+    def ByCSS(self, css, msg=''):
+        """Get By CSS Shortcut"""
+
+        dbgblk, dbglb = DbgNames(self.ByCSS)
+
+        DbgEnter(dbgblk, dbglb)
+
+        DbgMsg(f"Searching for : {css} / {msg}", dbglabel=dbglb)
+
+        item = None
+
+        try:
+            item = self.browser.find_element(By.CSS_SELECTOR, css)
+        except TimeoutException:
+            DbgMsg("Timeout reached exception", dbglabel=dbglb)
+        except NoSuchElementException:
+            DbgMsg("No such element exception", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg("Stale element exception", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return item
+
+    def MultiByCSS(self, css, msg=''):
+        """Multi Get By CSS Shortcut"""
+
+        dbgblk, dbglb = DbgNames(self.MultiByCSS)
+
+        DbgEnter(dbgblk, dbglb)
+
+        DbgMsg(f"Searching for : {css} / {msg}", dbglabel=dbglb)
+
+        items = list()
+
+        try:
+            items = self.browser.find_elements(By.CSS_SELECTOR, css)
+        except TimeoutException:
+            Msg("Timeout reached exception")
+        except NoSuchElementException:
+            Msg("No such element exception")
+        except StaleElementReferenceException:
+            Msg("Stale element exception")
+        except Exception as err:
+            Msg(f"A generic error occurred while waiting or looking for a warning popup : {err}")
+
+        DbgExit(dbgblk, dbglb)
+
+        return items
+
+    def ByXPATH(self, xpath, msg=''):
+        """Get By XPATH Shortcut"""
+
+        dbgblk, dbglb = DbgNames(self.ByXPATH)
+
+        DbgEnter(dbgblk, dbglb)
+
+        DbgMsg(f"Searching for : {xpath} / {msg}", dbglabel=dbglb)
+
+        item = None
+
+        try:
+            item = self.browser.find_element(By.XPATH, xpath)
+        except TimeoutException:
+            Msg("Timeout reached exception")
+        except NoSuchElementException:
+            Msg("No such element exception")
+        except StaleElementReferenceException:
+            Msg("Stale element exception")
+        except Exception as err:
+            Msg(f"A generic error occurred while waiting or looking for a warning popup : {err}")
+
+        DbgExit(dbgblk, dbglb)
+
+        return item
+
+    def MultiByXPATH(self, xpath, msg=''):
+        """Multi Get By XPATH Shortcut"""
+
+        dbgblk, dbglb = DbgNames(self.MultiByXPATH)
+
+        DbgEnter(dbgblk, dbglb)
+
+        DbgMsg(f"Searching for : {xpath} / {msg}", dbglabel=dbglb)
+
+        items = list()
+
+        try:
+            items = self.browser.find_elements(By.XPATH, xpath)
+        except TimeoutException:
+            Msg("Timeout reached exception")
+        except NoSuchElementException:
+            Msg("No such element exception")
+        except StaleElementReferenceException:
+            Msg("Stale element exception")
+        except Exception as err:
+            Msg(f"A generic error occurred while waiting or looking for a warning popup : {err}")
+
+        DbgExit(dbgblk, dbglb)
+
+        return items
+
+    def Get(self, url):
+        """Get Call on Web Driver"""
+
+        self.url = url
+        self.browser.get(self.url)
+
+    def SwitchContext(self, window, frame=None):
+        """Switch Context, the easy way"""
+
+        dbgblk, dbglb = DbgNames(self.SwitchContext)
+
+        DbgEnter(dbgblk, dbglb)
+
+        try:
+            if window is not None:
+                self.browser.switch_to.window(window)
+            if frame is not None:
+                self.browser.switch_to.frame(frame)
+        except NoSuchWindowException:
+            DbgMsg(f"No such window exception for {window}", dbglabel=dbglb)
+        except NoSuchFrameException:
+            DbgMsg(f"No such frame exception for {frame}", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred when trying to switch context : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+    def SwitchFrame(self, name, pause=0):
+        """Context/Content Switch Helper"""
+
+        dbgblk, dbglb = DbgNames(self.SwitchFrame)
+
+        success = False
+
+        if pause > 0:
+            self.Sleep(pause)
+
+        try:
+            self.browser.switch_to.frame(name)
+            success = True
+        except NoSuchFrameException:
+            DbgMsg(f"No such frame {name}", dbglabel=dbglb)
+        except Exception as err:
+            Msg(f"Generic error when trying to switch to frame {name} : {err}")
+
+        return success
+
+    def SwitchWindow(self, window_handle):
+        """Switch Between Windows"""
+
+        dbgblk, dbglb = DbgNames(self.SwitchWindow)
+
+        DbgEnter(dbgblk, dbglb)
+
+        self.url = self.browser.command_executor._url
+        self.session_id = self.browser.session_id
+
+        try:
+            try:
+                self.Half()
+                self.browser.switch_to.window(window_handle)
+            except ConnectionResetError as crst:
+                self.Reconnect()
+                self.browser.switch_to.window(window_handle)
+        except Exception as err:
+            ErrMsg(err, "A problem occurred switching browser windows")
+
+            if DebugMode():
+                breakpoint()
+
+        DbgExit(dbgblk, dbglb)
+
+    def SwitchTab(self, tab_handle):
+        """Switch to tab"""
+
+        self.SwitchWindow(tab_handle)
+
+    def NewTab(self, url):
+        """Open New Tab"""
+
+        original_handle = self.browser.current_window_handle
+
+        self.browser.switch_to.new_window('tab')
+
+        tab_handle = self.browser.current_window_handle
+
+        self.browser.get(url)
+
+        self.SwitchWindow(original_handle)
+
+        return tab_handle
+
+    def NewSession(self, url):
+        """New Session"""
+
+        dbgblk, dbglb = DbgNames(self.NewSession)
+
+        DbgEnter(dbgblk, dbglb)
+
+        options = self.DownloadOptions(downloadPath)
+        self.browser = webdriver.Chrome(options=options)
+
+        self.SetupBrowser(url)
+
+        DbgExit(dbgblk, dbglb)
+
+        return self.browser
+
+    def DownloadOptions(self, folder_path, with_caps=False):
+        """Set Browser Download Path"""
+
+        options = Options()
+
+        if with_caps:
+            # options.set_capability("browserVersion", "latest")
+            # options.set_capability("platformName", "linux")
+            options.set_capability("platformName", "Windows 10")
+
+            # Folder path removed here for Grid system, can be added back in if path exists
+            options.add_experimental_option("prefs", {
+                "download.prompt_for_download": False,
+                "download.directory_upgrade": True,
+                "safebrowsing.enabled": True})
+        else:
+            options.add_experimental_option("prefs", {
+                "download.default_directory": folder_path,
+                "download.prompt_for_download": False,
+                "download.directory_upgrade": True,
+                "safebrowsing.enabled": True})
+
+        options.add_argument('ignore-certificate-errors')
+
+        return options
+
+    def BadCert(self):
+        """Helper for Getting Past Bad Certs"""
+
+        adv_btn = self.ByCSS("button[id='details-button']")
+        adv_btn.click()
+
+        self.Half()
+
+        anchor = self.ByCSS("div > p > a[id='proceed-link']")
+
+        anchor.click()
+
+        self.Sleep()
+
+    def AttributeChanged(self, object, attribute, value):
+            """Check if attribute Changed"""
+
+            flag = False
+
+            current_value = object.get_attribute(attribute)
+
+            if value != current_value:
+                flag = True
+
+            return flag
+
+    def TagToAppear(self, selector_type, selector, timeout=5):
+        """Wait for Tag to Appear"""
+
+        result = None
+
+        try:
+            WebDriverWait(self.browser, timeout).until(presence_of_element_located((selector_type, selector)))
+
+            result = self.ByType(selector_type, selector)
+        except Exception as err:
+            ErrMsg(err, "An error occurred waiting for a tag to appear")
+
+        return result
+
+    def WaitUntilTrue(self, time_period, func, *args, **kwargs):
+        """Wait Until Something is True"""
+
+        start = datetime.now()
+        result = True
+
+        while not func(*args, *kwargs):
+            self.Tenth()
+
+            current = datetime.now()
+            passed = current - start
+
+            if passed.seconds >= time_period:
+                result = False
+                break
+
+        return result
+
+    def WaitPresenceCSS(self, timeout, selector):
+        """Wait for Something to be present"""
+
+        dbgblk, dbglb = DbgNames(self.WaitPresenceCSS)
+
+        DbgEnter(dbgblk, dbglb)
+
+        resultset = dict()
+
+        resultset["present"] = False
+        resultset["timeout"] = False
+        resultset["stale"] = False
+        resultset["nosuchelement"] = False
+        resultset["error"] = (False, None)
+        resultset["item"] = None
+
+        try:
+            DbgMsg(f"Waiting for : {selector}", dbglabel=dbglb)
+
+            WebDriverWait(self.browser, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
+            resultset["present"] = True
+
+            resultset["item"] = self.ByCSS(selector)
+        except TimeoutException as t_err:
+            resultset["timeout"] = True
+            resultset["error"] = (True, t_err)
+        except NoSuchElementException as ns_err:
+            resultset["nosuchelement"] = True
+            resultset["error"] = (True, ns_err)
+        except StaleElementReferenceException as s_err:
+            resultset["stale"] = True
+            resultset["error"] = (True, s_err)
+        except Exception as err:
+            resultset["error"] = (True, err)
+            DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return resultset
+
+    def WaitVisibleCSS(self, selector, timeout=2):
+        """Wait until Element is Visible"""
+
+        results = ( True, None )
+
+        try:
+            WebDriverWait(self.browser, timeout).until(visibility_of_element_located((By.CSS_SELECTOR, selector)))
+        except TimeoutException as t_err:
+            results = ( False, t_err )
+        except NoSuchElementException as ns_err:
+            results = ( False, ns_err )
+        except StaleElementReferenceException as s_err:
+            results = ( False, s_err )
+        except Exception as err:
+            results = ( False, err )
+            DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
+
+        return results
+
+    def WaitClickableCSS(self, selector, timeout=2):
+        """Wait for element to be Clickable"""
+
+        results = (True, None)
+
+        try:
+            WebDriverWait(self.browser, timeout).until(element_to_be_clickable((By.CSS_SELECTOR, selector))).click()
+        except TimeoutException as t_err:
+            results = (False, t_err)
+        except NoSuchElementException as ns_err:
+            results = (False, ns_err)
+        except StaleElementReferenceException as s_err:
+            results = (False, s_err)
+        except Exception as err:
+            results = (False, err)
+            DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
+
+        return results
+
+    def ScrollIntoView(self, element):
+        """Scroll Element Into View"""
+
+        self.browser.execute_script("arguments[0].scrollIntoView(true);", element)
+
+    def ClickAction(self, selector=None, element=None):
+        """Use Action to Click Element By Locator"""
+
+        if selector is not None:
+            element = self.ByCSS(selector)
+
+        ActionChains(self.browser).move_to_element(element).click().perform()
+
+    def DoubleClickAction(self, selector=None, element=None):
+        """Use Action to Click Element By Locator"""
+
+        if selector is not None:
+            element = self.ByCSS(selector)
+
+        ActionChains(self.browser).move_to_element(element).double_click().perform()
+
+
+class ASCBrowser(Browser):
+    """ACS Browser Class"""
+
+    ascTab = None
+    downloadsTab = None
+    mainFrame = "applicationFrame"
+
+    def __init__(self, url, download_path):
+        """Intitialize Instance"""
+
+        super().__init__(url, download_path)
+
+        self.SetContexts()
+
+    def SetContexts(self, frame="applicationFrame"):
+        """Set Contexts"""
+
+        dbgblk, dbglb = DbgNames(self.SetContexts)
+
+        DbgEnter(dbgblk, dbglb)
+
+        self.ascTab = self.browser.current_window_handle
+        self.mainFrame = frame
+
+        DbgExit(dbgblk, dbglb)
+
+    def NewSessionWithLogin(self, url):
+        """New Session With Expected Login"""
+
+        dbgblk, dbglb = DbgNames(self.NewSessionWithLogin)
+
+        DbgEnter(dbgblk, dbglb)
+
+        options = self.DownloadOptions(downloadPath)
+        self.browser = webdriver.Chrome(options=options)
+
+        self.SetupBrowser(url)
+
+        if self.SmartLogin():
+            DbgExit(dbgblk, dbglb)
+
+            return self.browser
+
+        DbgExit(dbgblk, dbglb)
+
+        return None
+
+    def OpenDownloadsTab(self):
+        """Open Downloads Tab"""
+
+        dbgblk, dbglb = DbgNames(self.OpenDownloadsTab)
+
+        DbgEnter(dbgblk, dbglb)
+
+        current_window = self.browser.current_window_handle
+
+        tab_handle = self.NewTab("chrome://downloads")
+
+        DbgExit(dbgblk, dbglb)
+
+        return current_window, tab_handle
+
+    def CloseDownloadsTab(self):
+        """Close Downloads Tab"""
+
+        dbgblk, dbglb = DbgNames(self.CloseDownsTab)
+
+        DbgEnter(dbgblk, dbglb)
+
+        self.SwitchWindow(self.downloadsTab)
+
+        self.browser.close()
+
+        self.SwitchWindow(self.ascTab)
+
+        DbgExit(dbgblk, dbglb)
+
+    def MainContext(self):
+        """Switch to Main Context"""
+
+        dbgblk, dbglb = DbgNames(self.MainContext)
+
+        DbgEnter(dbgblk, dbglb)
+
+        self.SwitchContext(self.ascTab, self.mainFrame)
+
+        DbgExit(dbgblk, dbglb)
+
+    def CancelDialog(self):
+        """Cancel Login Dialog Helper"""
+
+        dbgblk, dbglb = DbgNames(self.CancelDialog)
+
+        DbgEnter(dbgblk, dbglb)
+
+        self.Sleep(3.0)
+
+        ait.press("\t", "\t", "\t")
+        self.Half()
+        ait.press("\n")
+        self.Half()
+
+        DbgExit(dbgblk, dbglb)
+
+    def DumbLogin(self, username, password):
+        """Logging Into ACS, the Dumb Way, Ommmm"""
+
+        dbgblk, dbglb = DbgNames(self.DumbLogin)
+
+        DbgEnter(dbgblk, dbglb)
+
+        self.Half()
+
+        ait.write(username)
+        ait.press("\t")
+        ait.write(password)
+        ait.press("\t", "\t")
+        ait.press("\n")
+
+        self.Second()
+
+        DbgExit(dbgblk, dbglb)
+
+    def SmartLogin(self, username, password):
+        """Smart Login ACS"""
+
+        dbgblk, dbglb = DbgNames(self.SmartLogin)
+
+        DbgEnter(dbgblk, dbglb)
+
+        success = False
+
+        if self.SwitchFrame(0):
+            DbgMsg("Logging in", dbglabel=dbglb)
+
+            userInput = self.ByCSS("input[id='loginTabView:loginName:inputPanel:inputText']")
+            passwordInput = self.ByCSS("input[id='loginTabView:loginPassword:inputPanel:inputPassword']")
+            submitButton = self.ByCSS("button[id='loginTabView:loginButton']")
+
+            userInput.send_keys(username)
+            passwordInput.send_keys(password)
+
+            self.Half()
+
+            submitButton.click()
+
+            self.Second()
+
+            success = True
+        else:
+            Msg("*** Mucho problemo Jose!!! Can't log in")
+
+        DbgExit(dbgblk, dbglb)
+
+        return success
+
+    def SmartLogout(self):
+        """Logout Helper"""
+
+        dbgblk, dbglb = DbgNames(self.SmartLogout)
+
+        DbgEnter("Logging out", dbglb)
+
+        span = "table[id='powpwfteaper27'] > tbody > tr > td > span[id='powpwfteaper28']"
+        anchorID = "a[id='logoutMenuItem']"
+
+        spanobj = self.ByCSS(span)
+
+        WebDriverWait(self.browser, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
+
+        logoffAnchor = self.ByCSS(anchorID)
+
+        spanobj.click()
+
+        WebDriverWait(self.browser, 30).until(visibility_of(logoffAnchor))
+
+        logoffAnchor.click()
+
+        DbgExit(dbgblk, dbglb)
+
+    def FastQuit(self):
+        """Fast Quit"""
+
+        self.SmartLogout()
+        self.browser.quit()
+
+        sys.exit(-1)
+
+    def BusySpinnerPresent(self, closeit=False):
+        """Detect Busy Spinner"""
+
+        dbgblk, dbglb = DbgNames(self.BusySpinnerPresent)
+
+        DbgEnter(dbgblk, dbglb)
+
+        busyCss = "div[id='statusDialogId']"
+        imgCss = f"{busyCss} > div > img[id='aswpwfteapte18']"
+
+        busyFlag = False
+
+        try:
+            busy = self.ByCSS(busyCss)
+
+            if busy.is_displayed():
+                busyFlag = True
+
+                if closeit:
+                    self.Half()
+                    # Do Something
+                    # aria-hidden=true, aria-live=off, class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container ajaxStatusDialog"
+                    # style=width: auto; height: auto; left: 649px; top: 600.5px; z-index: 1039; display: none;
+
+                    self.browser.execute_script("document.getElementById('statusDialogId').style.display='none';")
+
+                    self.Half()
+
+        except Exception as err:
+            DbgMsg(f"An error occurred : {err}")
+
+        DbgExit(dbgblk, dbglb)
+
+        return busyFlag
+
+    def PopoutPresent(self, timeout=5):
+        """Check to see if Popout is Present"""
+
+        dbgblk, dbglb = DbgNames(self.PopoutPresent)
+
+        DbgEnter(dbgblk, dbglb)
+
+        italicsCss = "div[id='rightContent'] > table[id='aswpwfteapte42'] > tbody > tr > td > i[id='aswpwfteapte32']"
+        italicsXpath = "//div[@id='rightContent']/table[@id='aswpwfteapte42']/tbody/tr/td/i[@id='aswpwfteapte32']"
+
+        results = self.WaitPresenceCSS(timeout, italicsCss)
+
+        success = results["present"]
+
+        DbgExit(dbgblk, dbglb)
+
+        return success
+
+    def ClosePopOut(self, frame_name=None):
+        """Close that fucking annoying pop out"""
+
+        dbgblk, dbglb = DbgNames(self.ClosePopOut)
+
+        DbgEnter(dbgblk, dbglabel=dbglb)
+
+        self.MainContext()
+
+        self.Second()
+
+        italicsCss = "div[id='rightContent'] > table[id='aswpwfteapte42'] > tbody > tr > td > i[id='aswpwfteapte32']"
+        italicsXpath = "//div[@id='rightContent']/table[@id='aswpwfteapte42']/tbody/tr/td/i[@id='aswpwfteapte32']"
+
+        success = False
+
+        try:
+            self.Half()
+
+            count = 0
+
+            while not self.PopoutPresent() and count < 2:
+                self.Half()
+                count += 1
+
+            if count > 1:
+                raise NoSuchElementException("Popout didn't appear and this exception was raised while looking for it")
+
+            self.Half()
+
+            italics = self.ByCSS(italicsCss)
+
+            if italics.is_displayed():
+                self.Half()
+                DbgMsg("Trying to close/click Popout", dbglabel=dbglb)
+                italics.click()
+                DbgMsg("Popout should be closed", dbglabel=dbglb)
+                self.Half()
+
+                success = True
+        except NoSuchElementException as err_nse:
+            DbgMsg(f"No such element, {italicsCss} present", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg(f"Stale element exception when trying to clear pop out", dbglabel=dbglb)
+        except TimeoutException:
+            DbgMsg("Timed out looking for pop out", dbglabel=dbglb)
+        except Exception as err:
+            Msg(f"Generic error trying to clear pop out {err}")
+
+        DbgExit(dbgblk, dbglabel=dbglb)
+
+        return success
+
+    def GetPageCount(self):
+        """Get Search Results Page Count"""
+
+        dbgblk, dbglb = DbgNames(self.GetPageCount)
+
+        DbgEnter(dbgblk, dbglb)
+
+        pagecountCss = "span[class='ui-paginator-current']"
+        expr = r"^(?P<start>\d+)\s+-\s+(?P<end>\d+)\s+of\s+(?P<total>\d+)$"
+
+        pageCountSpan = self.ByCSS(pagecountCss)
+
+        results = (0, 0, -1)
+
+        if pageCountSpan is not None:
+            matches = re.search(expr, pageCountSpan.text)
+
+            if matches is not None:
+                start = int(matches.group("start"))
+                end = int(matches.group("end"))
+                total = int(matches.group("total"))
+
+                results = (start, end, total)
+
+        DbgExit(dbgblk, dbglb)
+
+        return results
+
+    def BlankRow(self, recording):
+        """Check For Blank Row"""
+
+        blank = False
+
+        for column_value in recording.data.values():
+            if column_value is not None and column_value != "":
+                break
+        else:
+            blank = True
+
+        return blank
+
+    def GetRows(self):
+        """Get Rows from Search"""
+
+        dbgblk, dbglb = DbgNames(self.GetRows)
+
+        DbgEnter(dbgblk, dbglb)
+
+        rows = self.MultiByCSS("div[class='ui-datatable-scrollable-body'] > table > tbody[id='masterTable:ascTable_data'] > tr")
+
+        DbgExit(dbgblk, dbglb)
+
+        return rows
+
+    @Eventing("Entering GetData", "Exiting GetData")
+    def GetData(self, frame_name=None):
+        """Get Data"""
+
+        dbgblk, dbglb = DbgNames(self.GetData)
+
+        DbgEnter(dbgblk, dbglb)
+
+        if frame_name is not None:
+            Event("Switching frame")
+            self.SwitchFrame(frame_name)
+
+        Event("Closing popout")
+        if self.ClosePopOut():
+            Event("Appears Popout was closed")
+        else:
+            Event("Appears Popout WAS NOT closed for some reason")
+
+        Msg("************* >>>>>>>>>>>>> Getting Rows <<<<<<<<<<<<<")
+
+        norecs = "No records found"
+
+        retries = 1
+        retry_count = 0
+        retry = True
+        last_rowkey = None
+
+        try:
+            Event("Entering try-while block")
+            while retry:
+                Event("Getting rows")
+                rows = self.GetRows()
+
+                records = list()
+
+                Event(f"Retrieved {len(rows)}")
+
+                count = 1
+                for row in rows:
+                    recording = RecordingRecord(row)
+
+                    last_rowkey = recording.rowkey
+                    Event(f"Processing {last_rowkey}")
+
+                    if self.BlankRow(recording):
+                        DbgMsg(f"Row for appears empty, skipping\n{recording.data}", dbglabel=dbglb)
+                        continue
+
+                    if DebugMode() and recording.data is None:
+                        DbgMsg("Recording.data is none, why?")
+                        breakpoint()
+
+                    try:
+                        Event("Checking for blanks, ie. no search results")
+                        loaded = recording.data.get("Loaded", "xxx")
+                        retry = False
+                        Event("Checking for no search results seems to have succeeded")
+                    except Exception as err:
+                        Msg(f"Checking for 'Loaded' column seems to have failed : {err}", dbglabel=dbglb)
+                        retry = True if retry_count < retries else False
+                        retry_count += 1
+
+                    if loaded != norecs and recording.data['Start Time'] != '':
+                        DbgMsg(f"Processing {count} : {recording.data['Conversation ID']}", dbglabel=dbglb)
+                        count += 1
+
+                        records.append(recording)
+                    elif loaded == norecs:
+                        DbgMsg("No data for this time frame", dbglabel=dbglb)
+                    else:
+                        DbgMsg(f"Something other than no data rows has happened for processed item {count}",
+                               dbglabel=dbglb)
+                        DbgMsg(f"Record is\n{recording.data}", dbglabel=dbglb)
+
+                    if BreakpointCheck(nobreak=True) and DebugMode():
+                        DbgMsg(f"In {dbglb} when manual breakpoint detected", dbglabel=dbglb)
+                        breakpoint()
+        except Exception as err:
+            PrintEvents()
+            ErrMsg(err, "An error occurred while trying to process rows from the search")
+
+            if DebugMode():
+                DbgMsg(f"Last {last_rowkey} could not be processed", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return records
+
+    def PausePlayer(self, timeout=5):
+        """Pause Player"""
+
+        dbgblk, dbglb = DbgNames(self.PausePlayer)
+
+        DbgEnter(dbgblk, dbglb)
+
+        pauseBtnCss = "div[id='asc_playercontrols_pause_btn']"
+
+        pauseBtn = self.ByCSS(pauseBtnCss)
+
+        try:
+            WebDriverWait(self.browser, timeout).until(visibility_of(pauseBtn))
+
+            pauseBtn.click()
+        except TimeoutException:
+            DbgMsg("Timeout reached, player control is not visible or accessible, BAD", dbglabel=dbglb)
+        except NoSuchElementException:
+            DbgMsg("No such element error while looking for pause button", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg("Stale element exception while looking for pause button", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred while trying to pause player : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+    def StalledDownload(self, rowkey=None):
+        """Check for Stalled Download"""
+
+        dbgblk, dbglb = DbgNames(self.StalledDownload)
+
+        DbgEnter(dbgblk, dbglb)
+
+        saveBoxCss = "div[class='jBox-container'] > div[class='jBox-title jBox-draggable'] > div"
+        btnOkCss = "div[class='jBox-footer'] > div[class='asc_dialog_footer'] > button[class='asc_jbox_ok_button']"
+        btnCancelCss = "div[class='jBox-footer'] > div[class='asc_dialog_footer'] > button[class='asc_jbox_cancel_button']"
+
+        prepPerCss = "div[id='asc_player_saveas_progress'] > div > span[id='asc_player_saveas_progressbar_percentage']"
+        prepFileCss = "div[id='asc_player_saveas_progress'] > div > span[id='asc_player_saveas_progressbar_file_percentage']"
+
+        stalled = False
+
+        result = self.WaitPresenceCSS(3, saveBoxCss)
+
+        if result["present"]:
+            timechk = datetime.now()
+
+            while result["present"] and not stalled:
+                self.Quarter()
+
+                result = self.WaitPresenceCSS(1, saveBoxCss)
+
+                if result["present"]:
+                    time_passed = datetime.now() - timechk
+
+                    if time_passed.seconds > 8:
+                        cancelBtn = self.ByCSS(btnCancelCss)
+                        progress = self.ByCSS(prepPerCss)
+
+                        if cancelBtn is not None and progress is not None and time_passed.seconds <= 10:
+                            if progress.text == "0%":
+                                cancelBtn.click()
+                                stalled = True
+                            elif progress.text == "":
+                                try:
+                                    # Last ditch chance to complete d/l
+                                    okBtn = self.ByCSS(btnOkCSS)
+
+                                    obBtn.click()
+                                    DbgMsg("Came across case where save dialog was up and not stalled")
+                                except Exception as err:
+                                    DbgMsg("Save dialog stalled or not, can't tell")
+                        elif time_passed.seconds > 10:
+                            stalled = True
+                            if cancelBtn is not None:
+                                cancelBtn.click()
+
+        if stalled and DebugMode():
+            DbgMsg(f"Stalled on rowkey {rowkey}")
+
+        DbgExit(dbgblk, dbglb)
+
+        return stalled
+
+    def WarningMsg(self, rowkey=None):
+        """Check for a Warning Popup"""
+
+        dbgblk, dbglb = DbgNames(self.WarningMsg)
+
+        DbgEnter(dbgblk, dbglb)
+        DbgMsg(f"Checking for warning on {rowkey}", dbglabel=dbglb)
+
+        conditions = {"rowkey": ""}
+
+        # Wait for error, set success to False if error pops up
+        prefix = "div[id='globalHeaderMessage'] > div > div > div[id='headerMessages'] > div"
+        errorCss = f"{prefix} > span"
+        errMsg = f"{prefix} > ul > li > span[class='ui-messages-error-detail']"
+
+        errmsg = ""
+
+        msg = None
+        warning = None
+
+        try:
+            self.ClosePopOut()
+
+            result = self.WaitPresenceCSS(8, errorCss)
+
+            if result["present"]:
+                DbgMsg(f"Warning present", dbglabel=dbglb)
+
+                warning = result["item"]
+
+                self.Sleep(1.5)
+
+                msg = self.ByCSS(errMsg)
+
+                # Not because I want to, but because this WebUI is so fucking unpredictable in spots... this being one of them.
+                if warning is not None:
+                    try:
+                        if warning.is_displayed():
+                            pass
+                    except Exception as err:
+                        self.Second()
+                        warning = self.ByCSS(errorCss)
+
+                if warning.is_displayed() and warning.is_enabled():
+                    errmsg = edom(msg)["innerText"]
+
+                    DbgMsg(f"Warning is displayed AND enabled with '{errmsg}' for {rowkey}", dbglabel=dbglb)
+                    warning.click()
+                    self.Sleep(3)
+                else:
+                    DbgMsg(f"Warning detected for {rowkey}", dbglabel=dbglb)
+                    vismsg = "Is visible" if warning.is_displayed() else "Is NOT visible"
+                    enamsg = "Is enabled" if warning.is_enabled() else "Is NOT enabled"
+                    errmesg = edom(msg)[
+                        "innerText"]  # Named errmesg on purpose to prevent it messing with active errmsg
+
+                    DbgMsg(f"Visibility\t: {vismsg}", dbglabel=dbglb)
+                    DbgMsg(f"Enabled\t: {enamsg}", dbglabel=dbglb)
+                    DbgMsg(f"With Msg\t: {errmesg}", dbglabel=dbglb)
+            else:
+                DbgMsg(f"Warning is not present for {rowkey}", dbglabel=dbglb)
+        except StaleElementReferenceException as s_err:
+            DbgMsg(f"Stale element error triggered during warning check : {s_err}", dbglabel=dbglb)
+        except Exception as err:
+            ErrMsg(err, "Something happened during warning check")
+
+            if DebugMode():
+                breakpoint()
+
+        if BreakWhen(conditions, rowkey=rowkey):
+            DbgMsg(f"Rowkey, {rowkey}, matches break condition", dbglabel=dbglb)
+            breakpoint()
+
+        BreakpointCheck()
+        CheckForEarlyTerminate()
+
+        DbgExit(dbgblk, dbglb)
+
+        return errmsg
+
+    def ActivateRow(self, row, rowkey=None):
+        """Activate Row"""
+
+        dbgblk, dbglb = DbgNames(self.ActivateRow)
+
+        DbgEnter(dbgblk, dbglb)
+        DbgMsg(f"Attempting to activate {rowkey}", dbglabel=dbglb)
+
+        success = True
+
+        conditions = {"rowkey": ""}
+
+        try:
+            self.DoubleClickAction(element=row)
+            # ActionChains(self.browser).move_to_element(row).double_click().perform()
+        except Exception as err:
+            ErrMsg(err, "An error occurred while trying to activate a row")
+
+            if DebugMode():
+                breakpoint()
+
+        self.Half()
+
+        self.PausePlayer(timeout=3)
+
+        response = self.WarningMsg(rowkey=rowkey)
+
+        success = (response == "")
+
+        if success:
+            self.PausePlayer(timeout=2)
+
+        if BreakWhen(conditions, rowkey=rowkey):
+            DbgMsg(f"Rowkey, {rowkey}, matches for breakpoint", dbglabel=dbglb)
+            breakpoint()
+
+        DbgExit(dbgblk, dbglb)
+
+        return success
+
+    def GetDownloads(self, sleep_time=3):
+        """Get List of Downloads In Download Tab"""
+
+        dbgblk, dbglb = DbgNames(self.GetDownloads)
+
+        DbgEnter(dbgblk, dbglb)
+
+        if BreakpointCheck(nobreak=True) and DebugMode():
+            DbgMsg("Manual breakpoint detected", dbglabel=dbglb)
+            breakpoint()
+
+        originalTab = self.browser.current_window_handle
+
+        self.SwitchTab(self.downloadsTab)
+
+        if sleep_time > 0:
+            self.Sleep(sleep_time)
+
+        downloadsScript = "return document.querySelector('downloads-manager').shadowRoot.querySelectorAll('#downloadsList downloads-item')"
+
+        downloads = self.browser.execute_script(downloadsScript)
+
+        downloadDict = dict()
+
+        progress = {"value": "100"}
+
+        for download in downloads:
+            try:
+                fname = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#file-link"))
+
+                try:
+                    progress = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#progress"))
+                except NoSuchElementException:
+                    DbgMsg("No such element error, progress is not available, assuming 100%", dbglabel=dbglb)
+
+                downloadDict[fname["text"]] = int(progress["value"])
+            except NoSuchElementException:
+                DbgMsg("Could not file 'file-link' in shadow root of downloads-item")
+            except Exception as err:
+                Msg(f"Trouble getting download information : {err}")
+
+        self.MainContext()
+
+        DbgExit(dbgblk, dbglb)
+
+        return downloadDict
+
+    @Eventing("Starting Search")
+    def Search(self, startDate, endDate):
+        """Set and Conduct Search"""
+
+        dbgblk, dbglb = DbgNames(self.Search)
+
+        DbgEnter(dbgblk, dbglb)
+
+        events = list()
+
+        try:
+            Event("Beginning Search Run")
+
+            try:
+                Event("Looking for general dropdown button")
+                # Find "General dropdown
+                general = self.ByCSS("a[id='conversationToolbar:commonFunctionsMenuBtn']")
+                general.click()
+                Event("General dropdown clicked")
+            except Exception as err:
+                Event(f"General dropdown button could not be found, {err}")
+
+            self.Half()
+
+            try:
+                Event("Looking for search anchor")
+                # Find Search anchor and click it
+                anchor = self.ByCSS("a[id='conversationToolbar:toolbarSearchBtn']")
+                anchor.click()
+                Event("Anchor clicked")
+            except Exception as err:
+                Event(f"Anchor either not found or not clicked : {err}")
+
+            self.Half()
+
+            try:
+                Event("Select box section")
+
+                # Set Select box
+                sbox = self.ByCSS("select[id='conversationObjectView:j_idt132:searchdatatable:0:searchMenu']")
+                WebDriverWait(self.browser, 5).until(visibility_of(sbox))
+
+                select = Select(sbox)
+                # Set "between", then set dates. VALUE = "BETWEEN"
+                select.select_by_value('BETWEEN')
+
+                Event("Selection Completed")
+            except Exception as err:
+                Event(f"Search box not found or filled, an error occurred : {err}")
+
+            self.Half()
+
+            spinner = None
+
+            try:
+                Event(f"Beginning Search between {startDate} and {endDate}")
+
+                WebDriverWait(self.browser, 5).until(presence_of_element_located(
+                    (By.CSS_SELECTOR,
+                     "input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarOne_input']")))
+                WebDriverWait(self.browser, 5).until(presence_of_element_located(
+                    (By.CSS_SELECTOR,
+                     "input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarTwo_input']")))
+
+                # Get begin and end date inputs
+                startInput = self.ByCSS("input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarOne_input']")
+                endInput = self.ByCSS("input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarTwo_input']")
+                searchBtn = self.ByCSS("button[id='conversationObjectView:j_idt413'")
+
+                spinnerCss = "div[id='statusDialogId']"
+                spinner = self.ByCSS(spinnerCss)
+
+                closeAnchorCss = "div[id='conversationObjectView:searchDialog'] > div > a[class='ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all']"
+                closeAnchor = self.ByCSS(closeAnchorCss)
+
+                startInput.clear()
+                startInput.send_keys(startDate.strftime("%m/%d/%Y %I:%M:%S %p"))
+                endInput.clear()
+                endInput.send_keys(endDate.strftime("%m/%d/%Y %I:%M:%S %p"))
+
+                DbgMsg(f"Conducting search between {startDate} and {endDate}", dbglabel=dbglb)
+
+                # Start Search
+                searchBtn.click()
+
+                Event("Search completed")
+            except Exception as err:
+                Event(f"An error occurred while filling out the search : {err}")
+
+            # Wait for search to complete
+
+            self.Half()
+
+            startSearch_Timestamp = datetime.now()
+
+            flag = self.WaitUntilTrue(3600, AttributeChanged, spinner, "aria-hidden", "false")
+
+            searchDuration = datetime.now() - startSearch_Timestamp
+
+            Msg(f"Elapsed search time : {searchDuration}")
+
+            # Close Search Box
+            closeAnchor.click()
+
+            Event("Close anchor clicked, we done")
+        except Exception as err:
+            ErrMsg(err, "An error occurred while trying to execute a search")
+
+            Event(f"Bummer, an error occurred while attempting a search : {err}")
+
+            if DebugMode():
+                DbgMsg(
+                    f"Something hit the fan during a search, you can checked the 'events' list to see the last successful or errored event")
+                breakpoint()
+
+        DbgExit(dbgblk, dbglb)
+
+    def BeginDownload(self, vrec=None):
+        """Begin Download"""
+
+        dbgblk, dbglb = DbgNames(self.BeginDownload)
+
+        DbgEnter(dbgblk, dbglb)
+
+        success = True
+        saveCss = "div[id='asc_playercontrols_savereplayables_btn']"
+        mediaSrcsAudioCss = "li[class='mediasources_audio'] > label > input"
+        mediaSrcsAudioCssDis = "li[class='mediasources_audio asc_disabled'] > label > input"
+        mediaSrcsChat = "li[class='mediasources_chat'] > label > input"
+        okBtnCss = "button[class='asc_jbox_ok_button']"
+        cancelBtnCss = "button[class='asc_jbox_cancel_button']"
+
+        self.ClosePopOut()
+
+        saveBtn = self.ByCSS(saveCss)
+        saveBtn.click()
+
+        # Will Bring up dialog
+        audioInputDis = None
+        audioInput = self.ByCSS(mediaSrcsAudioCss, msg="AKA mediaSources Inputbox")
+
+        if audioInput is None:
+            audioInputDis = self.ByCSS(mediaSrcsAudioCssDis)
+
+        cancelBtn = self.ByCSS(cancelBtnCss)
+
+        self.Half()
+
+        audioEnabled = False
+
+        try:
+            if audioInputDis is None and audioInput is not None and audioInput.is_displayed() and audioInput.is_enabled():
+                audioEnabled = True
+
+                aiObj = edom(audioInput)
+
+                count = 0
+
+                while not aiObj.get_prop("checked", False) and count < 3:
+                    self.Half()
+                    audioInput.click()
+
+                    count += 1
+
+                self.Half()
+
+                okBtn = self.ByCSS(okBtnCss)
+
+                self.Half()
+
+                okBtn.click()
+            else:
+                success = False
+                self.Half()
+                cancelBtn.click()
+
+            self.Half()
+        except ElementClickInterceptedException:
+            success = False
+
+            if DebugMode():
+                DbgMsg("audio checkbox unable to be clicked, likely disabled by CSS", dbglabel=dbglb)
+        except Exception as err:
+            ErrMsg(err, "Click to download failed")
+            audioEnabled = False
+            success = False
+
+        DbgExit(dbgblk, dbglb)
+
+        return success
+
+    def Download(self, voice_recording, frame_name=None, rows=None):
+        """Download Recording"""
+
+        global global_temp, lastprocessed
+
+        dbgblk, dbglb = DbgNames(self.Download)
+
+        DbgEnter(dbgblk, dbglb)
+
+        recording = voice_recording.recording
+
+        success = False
+        rowkey = recording.rowkey
+        row = None
+
+        if lastprocessed is None:
+            last_rowkey = rowkey
+        else:
+            last_rowkey = lastprocessed.recording.rowkey
+
+        conditions = {"rowkey": ""}
+
+        if frame_name is not None:
+            self.SwitchFrame(frame_name)
+
+        try:
+            if self.PopoutPresent(timeout=1):
+                self.ClosePopOut(frame_name)
+
+            stalled = self.StalledDownload(rowkey=last_rowkey)
+
+            if stalled:
+                lastprocessed.AddToBad()
+                lastprocessed.progress = 100
+
+            self.Half()
+
+            rowXPath = f"//tr[@data-rk='{rowkey}']"
+            row = self.ByXPATH(rowXPath)
+
+            # Activate Row
+            success = self.ActivateRow(row, rowkey)
+
+            if success:
+                # Begin Download
+                global_temp = ("activation succeeded", rowkey)
+
+                DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel=dbglb)
+
+                if not self.BeginDownload(vrec=voice_recording):
+                    global_temp = ("save failed", rowkey)
+
+                    success = False
+                    voice_recording.AddToBad()
+
+                    recording.data["Archived"] = "Audio Unavailable/Not Archived"
+                    AppendRows(catalogFilename, recording.data)
+                    Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
+            else:
+                global_temp = ("activation failed", rowkey)
+                Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
+
+                voice_recording.AddToBad()
+
+                recording.data["Archived"] = "Damaged/Not Archived"
+                recording.data["Expanded"] = "Warning received before download"
+                AppendRows(catalogFilename, recording.data)
+        except Exception as err:
+            # check rowkey and list of rows
+            Msg(f"Could not activate row with rowkey {rowkey} : {err}")
+
+        if BreakWhen(conditions, rowkey=rowkey):
+            DbgMsg(f"Rowkey, {rowkey}, matches for breakpoint", dbglabel=dbglb)
+            breakpoint()
+
+        if BreakpointCheck(nobreak=True) and DebugMode():
+            DbgMsg("A manual breakpoint was detected... and so I am breakpointing, probably should check the stalled thingy")
+            breakpoint()
+
+        lastprocessed = voice_recording
+
+        DbgExit(dbgblk, dbglb)
+
+        return success
+
+    def CompleteBadRecording(self, download):
+        """Complete a bad download"""
+
+        recording = download.recording
+        myname, mypath = download.MyPath()
+
+        if recording.data["Archived"] is None or recording.data["Archived"] == "" or recording.data["Archived"] == "0":
+            recording.data["Archived"] = "No/Not Downloaded"
+
+        recording.data["Expanded"] = "Missing after download"
+        missing = os.path.join(mypath, "missing.txt")
+
+        ph.Touch(missing)
+
+        if not download.IsBad():
+            download.AddToBad()
+
+    def SaveMetaInfo(self, download):
+        """Save Meta Info"""
+
+        myname, mypath = download.MyPath()
+        recording = download.recording
+
+        if not os.path.exists(mypath):
+            os.makedirs(mypath)
+
+        metafile = os.path.join(mypath, "meta-data.csv")
+
+        if not os.path.exists(metafile):
+            AppendRows(metafile, recording.data)
+
+        AppendRows(catalogFilename, recording.data)
+
+    def CompleteDownload(self, download):
+        """Complete Download"""
+
+        dbgblk, dbglb = DbgNames(self.CompleteDownload)
+
+        DbgEnter(dbgblk, dbglb)
+
+        if not download.IsBad():
+            myname, mypath = download.MyPath()
+
+            os.makedirs(mypath, exist_ok=True)
+
+            recording = download.recording
+
+            # Unzip into mypath
+            myzipfile = os.path.join(download.downloadPath, download.filename)
+
+            try:
+                if os.path.exists(myzipfile):
+                    with zipfile.ZipFile(myzipfile, "r") as zip_ref:
+                        zip_ref.extractall(mypath)
+
+                    recording.data["Archived"] = "Yes/Downloaded"
+
+                    os.remove(myzipfile)
+                else:
+                    self.CompleteBadRecording(download)
+
+                self.SaveMetaInfo(download)
+            except Exception as err:
+                ErrMsg(err, f"Failed to complete download of {recording.data['Conversation ID']}")
+        else:
+            self.CompleteBadRecording(download)
+            self.SaveMetaInfo(download)
+
+        DbgExit(dbgblk, dbglb)
+
+    def CheckActiveDownloads(self, activeDownloads, downloadCount, sleep_time=3, pause=2):
+        """Check (and/or Wait for) Active Downloads"""
+
+        dbgblk, dbglb = DbgNames(self.CheckActiveDownloads)
+
+        DbgEnter(dbgblk, dbglb)
+
+        completedCount = 0
+
+        while len(activeDownloads) >= downloadCount:
+            for activeDownload in activeDownloads:
+                progress = activeDownload.GetDownloadProgress(self, sleep_time=sleep_time)
+
+                if progress >= 100:
+                    DbgMsg(f"Completing {activeDownload.ConversationID()}", dbglabel=dbglb)
+                    self.CompleteDownload(activeDownload)
+
+                    activeDownloads.remove(activeDownload)
+
+                    completedCount += 1
+
+            if len(activeDownloads) >= simultaneousDownloads and pause > 0:
+                self.Sleep(pause)
+
+            BreakpointCheck()
+            CheckForEarlyTerminate()
+
+        DbgExit(dbgblk, dbglb)
+
+        return completedCount
+
+    def BatchDownloading(self, interval):
+        """Download Items"""
+
+        dbgblk, dbglb = DbgNames(self.BatchDownloading)
+
+        DbgEnter(dbgblk, dbglb)
+
+        completed = 0
+        errored = 0
+
+        # Open Downloads Tab For Inspection
+        ascTab, downloadTab = self.OpenDownloadsTab()
+
+        self.downloadsTab = downloadTab
+
+        self.Sleep(4)
+
+        self.SwitchFrame(self.mainFrame, 3)
+
+        nextClassDisabled = "ui-paginator-next ui-state-default ui-corner-all ui-state-disabled"
+        nextButtonDisabledCss = f"a[class='{nextClassDisabled}']"
+        nextButtonCss = "a[aria-label='Next Page']"
+
+        nextBtn = self.ByCSS(nextButtonCss)
+
+        # Search from start date to end date in increments of 5 downloads per until all files downloaded
+        startDate = officialStart
+        searchInterval = timedelta(days=interval.days, hours=11, minutes=59, seconds=59)
+        correction = timedelta(seconds=1)
+
+        activeDownloads = list()
+
+        DbgMsg(f"Starting run between {startDate} and {officialEnd}", dbglabel=dbglb)
+
+        while startDate < officialEnd:
+            endDate = startDate + searchInterval
+
+            self.MainContext()
+
+            # Conduct a search between the given dates
+            self.Search(startDate, endDate)
+
+            self.Half()
+
+            paginationInfo = self.GetPageCount()
+
+            # Now, download the results X at a time and remember to page until you can't page anymore
+            while True:
+                self.MainContext()
+
+                # Get Items on current page
+                data = self.GetData(self.mainFrame)
+
+                for recording in data:
+                    # Check recording to see if it's already downloaded or discardable in some other way
+
+                    vrec = VoiceDownload(recording, self.downloadPath)
+
+                    recording_we_want = vrec.SelectForDownload()
+
+                    if recording_we_want:
+                        DbgMsg(f"Recording {recording.data['Conversation ID']} will be downloaded", dbglabel=dbglb)
+
+                        # Only allow for X number of simultaneousDownloads
+                        if self.Download(vrec, self.mainFrame, data):
+                            success = vrec.GetDownloadInfo(self)
+
+                            if success:
+                                activeDownloads.append(vrec)
+                        else:
+                            errored += 1
+                            vrec.AddToBad()
+                            Msg(f"Download for recording {recording.data['Conversation ID']} had an error")
+                    else:
+                        DbgMsg(f"Recording {recording.data['Conversation ID']} will be skipped", dbglabel=dbglb)
+                        continue
+
+                    BreakpointCheck()
+                    CheckForEarlyTerminate()
+
+                    completed += self.CheckActiveDownloads(activeDownloads, simultaneousDownloads, 1.25)
+
+                del data
+
+                nextBtn = self.ByCSS(nextButtonCss)
+
+                if nextBtn.get_attribute("class") != nextClassDisabled:
+                    # More pages of items for this search to download
+                    nextBtn.click()
+                    self.Sleep(4)
+                else:
+                    # No more items to download for this search
+                    # Now, make sure the D/Ls that are currently running complete
+
+                    if len(activeDownloads) > 0:
+                        completed += self.CheckActiveDownloads(self.downloadTab, activeDownloads, 1, 0)
+
+                    present = self.BusySpinnerPresent(True)
+
+                    break
+
+            self.Sleep(5.0)
+            DbgMsg("Refreshing browser instance", dbglabel=dbglb)
+            self.Refresh(browser)
+            self.Sleep(8.0)
+
+            startDate = endDate + correction
+            endDate = (startDate + searchInterval)
+
+        self.CloseDownloadsTab()
+
+        Msg(f"Completed\t: {completed}\nErrored\t: {errored}")
+
+        DbgExit(dbgblk, dbglb)
+
+    def POC(self):
+        """POC of download system"""
+
+        # POC Search and D/L
+        # Set Search Up
+        self.Search(startOn, endOn)
+
+        # Extract Current Rows
+        data = self.GetData()
+
+        # Conduct one download
+        self.Download(data[0])
+
+    def GetVoiceRecordings(self, interval, username, password):
+        """Get ACS Voice Recordings... Probably"""
+
+        dbgblk, dbglb = DbgNames(self.GetVoiceRecordings)
+
+        DbgEnter(dbgblk, dbglb)
+
+        # Cancel Login Dialog (Via Ait)
+        self.CancelDialog()
+
+        # Actual Login... but dumb... (via Ait)
+        if self.SmartLogin(username, password):
+            # Replace with wait
+            self.Second()
+
+            doPOC = False
+
+            # Begin Searches and downloads
+
+            if doPOC:
+                self.POC()
+            else:
+                self.SwitchFrame(self.mainFrame)
+                self.BatchDownloading(interval)
+
+            self.SmartLogout()
+
+        DbgExit(dbgblk, dbglb)
+
 
 class RecordingRecord:
     """RecordingRecord Class"""
@@ -553,7 +2332,7 @@ class VoiceDownload:
         self.recording = recording
         self.downloadPath = downloadPath
 
-    def GetDownloadInfo(self, browser, downloadTab, sleep_time=3):
+    def GetDownloadInfo(self, browser, sleep_time=3):
         """Get Download Info"""
 
         dbgblk, dbglb = DbgNames(self.GetDownloadInfo)
@@ -564,7 +2343,7 @@ class VoiceDownload:
 
         success = True
 
-        downloads = GetDownloads(browser, downloadTab, sleep_time)
+        downloads = browser.GetDownloads(sleep_time)
 
         if len(downloads) == 0:
             success = False
@@ -579,20 +2358,20 @@ class VoiceDownload:
 
                 break
 
-        MainContext(browser)
+        browser.MainContext()
 
         DbgExit(dbgblk, dbglb)
 
         return success
 
-    def GetDownloadProgress(self, browser, downloadTab, sleep_time=3):
+    def GetDownloadProgress(self, browser, sleep_time=3):
         """Update Download Progress"""
 
         dbgblk, dbglb = DbgNames(self.GetDownloadProgress)
 
         DbgEnter(dbgblk, dbglb)
 
-        downloads = GetDownloads(browser, downloadTab, sleep_time)
+        downloads = browser.GetDownloads(sleep_time)
 
         for filename, progress in downloads.items():
             if filename == self.filename:
@@ -600,7 +2379,7 @@ class VoiceDownload:
 
                 break
 
-        MainContext(browser)
+        browser.MainContext()
 
         DbgExit(dbgblk, dbglb)
 
@@ -788,7 +2567,7 @@ class VoiceDownload:
 # Variables
 
 downloadPathASC = r"S:\Backups\asc"
-sessionASC = f"{downloadPathASC}\session1"
+sessionASC = f"{downloadPathASC}\\session1"
 downloadPathPackt = r"Y:\media\eBooks\Packt\freebies"
 
 downloadPath = None
@@ -852,59 +2631,6 @@ EventList = list()
 # Decorators
 
 # Functions
-
-# Eventing Functions/Decorators
-
-
-def Event(comment):
-    """Register An Event"""
-
-    global EventList
-
-    if EventList is not None and comment is not None:
-        EventList.append(comment)
-
-
-def ClearEvents():
-    """Clear Event List"""
-
-    global EventList
-
-    if EventList is not None:
-        EventList.clear()
-
-
-def PrintEvents():
-    """Print Events"""
-
-    global EventList
-
-    if EventList is not None:
-        for message in EventList:
-            Msg(message)
-
-
-def Eventing(start_message, end_message=None, leave=False):
-    """Eventing Decorator"""
-
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            ClearEvents()
-
-            Event(start_message)
-
-            results = func(*args, **kwargs)
-
-            Event(end_message)
-
-            if not leave:
-                ClearEvents()
-
-            return results
-        return wrapper
-    return decorator
-
 
 # Debugging Stuff
 
@@ -1180,15 +2906,6 @@ def RemoveFile(*args):
             os.remove(filename)
 
 
-def fastq(browser):
-    """Fast Quit"""
-
-    SmartLogout(browser)
-    browser.quit()
-
-    sys.exit(-1)
-
-
 def Sleep(time_period):
     """Sleep for the specified time interval"""
 
@@ -1292,16 +3009,6 @@ def SaveRows(filename, rows):
     SaveRowsInternal(filename, rows)
 
 
-def Winds(browser):
-    """Show all window ID's and currently selected window"""
-
-    Msg("All Window Handles\n==================")
-    for handle in browser.window_handles:
-        Msg(handle)
-
-    Msg(f"Present Window : {browser.current_window_handle}")
-
-
 def GetFolder(folder=downloadPath):
     """Get Folder Contents"""
 
@@ -1395,18 +3102,21 @@ def ShowCatalog(catalog=None):
             Msg("No items in catalog to display")
 
 
+# deprecated
 def Maximize(browser):
     """Maximize Browser Windows Helper"""
 
     browser.maximize_window()
 
 
+# deprecated
 def Refresh(browser):
     """Refresh Browser Window"""
 
     browser.refresh()
 
 
+# deprecated
 def ByCSS(browser, css, msg=''):
     """Get By CSS Shortcut"""
 
@@ -1434,6 +3144,7 @@ def ByCSS(browser, css, msg=''):
     return item
 
 
+# deprecated
 def MultiByCSS(browser, css, msg=''):
     """Multi Get By CSS Shortcut"""
 
@@ -1461,6 +3172,7 @@ def MultiByCSS(browser, css, msg=''):
     return items
 
 
+# deprecated
 def ByXPATH(browser, xpath, msg=''):
     """Get By XPATH Shortcut"""
 
@@ -1488,6 +3200,7 @@ def ByXPATH(browser, xpath, msg=''):
     return item
 
 
+# deprecated
 def MultiByXPATH(browser, xpath, msg=''):
     """Multi Get By XPATH Shortcut"""
 
@@ -1515,6 +3228,7 @@ def MultiByXPATH(browser, xpath, msg=''):
     return items
 
 
+# deprecated
 def SwitchContext(browser, window, frame=None):
     """Switch Context, the easy way"""
 
@@ -1537,6 +3251,7 @@ def SwitchContext(browser, window, frame=None):
     DbgExit(dbgblk, dbglb)
 
 
+# deprecated
 def MainContext(browser):
     """Switch to Main Context"""
 
@@ -1549,6 +3264,7 @@ def MainContext(browser):
     DbgExit(dbgblk, dbglb)
 
 
+# deprecated
 def SwitchFrame(browser, name, pause=0):
     """Context/Content Switch Helper"""
 
@@ -1574,6 +3290,7 @@ def SwitchFrame(browser, name, pause=0):
     return success
 
 
+# deprecated
 def SwitchWindow(browser, windowHandle):
     """Switch Between Windows"""
 
@@ -1587,12 +3304,14 @@ def SwitchWindow(browser, windowHandle):
             breakpoint()
 
 
+# deprecated
 def SwitchTab(browser, tabHandle):
     """Switch to tab"""
 
     SwitchWindow(browser, tabHandle)
 
 
+# deprecated
 def NewTab(browser, url):
     """Open New Tab"""
 
@@ -1609,12 +3328,14 @@ def NewTab(browser, url):
     return tabHandle
 
 
+# deprecated
 def SetupBrowser(browser, url):
     """Helper for setting up the browser"""
 
     browser.get(url)
 
 
+# deprecated
 def DownloadOptions(folderPath, withcaps= False):
     """Set Browser Download Path"""
 
@@ -1653,6 +3374,7 @@ def DoAit(seconds, key=None, write=None):
         ait.write(write)
 
 
+# deprecated
 def BadCert(browser):
     """Helper for Getting Past Bad Certs"""
 
@@ -1668,6 +3390,7 @@ def BadCert(browser):
     Second()
 
 
+# deprecated
 def CancelDialog():
     """Cancel Login Dialog Helper"""
 
@@ -1685,6 +3408,7 @@ def CancelDialog():
     DbgExit(dbgblk, dbglb)
 
 
+# deprecated
 def DumbLogin():
     """Logging Into ACS, the Dumb Way, Ommmm"""
 
@@ -1700,6 +3424,7 @@ def DumbLogin():
     Second()
 
 
+# deprecated
 def SmartLogin(browser):
     """Smart Login ACS"""
 
@@ -1731,6 +3456,7 @@ def SmartLogin(browser):
     return success
 
 
+# deprecated
 def SmartLogout(browser):
     """Logout Helper"""
 
@@ -1756,7 +3482,7 @@ def SmartLogout(browser):
 
     DbgExit(dbgblk, dbglb)
 
-
+# deprecated
 def BusySpinnerPresent(browser, closeit=False):
     """Detect Busy Spinner"""
 
@@ -1786,6 +3512,7 @@ def BusySpinnerPresent(browser, closeit=False):
     return busyFlag
 
 
+# deprecated
 def PopoutPresent(browser, timeout=5):
     """Check to see if Popout is Present"""
 
@@ -1805,6 +3532,7 @@ def PopoutPresent(browser, timeout=5):
     return success
 
 
+# deprecated
 def ClosePopOut(browser, frame_name=None):
     """Close that fucking annoying pop out"""
 
@@ -1860,6 +3588,7 @@ def ClosePopOut(browser, frame_name=None):
     return success
 
 
+# deprecated
 def GetPageCount(browser):
     """Get Search Results Page Count"""
 
@@ -1884,6 +3613,7 @@ def GetPageCount(browser):
     return results
 
 
+# deprecated
 def BlankRow(recording):
     """Check For Blank Row"""
 
@@ -1898,6 +3628,7 @@ def BlankRow(recording):
     return blank
 
 
+# deprecated
 def GetRows(browser):
     """Get Rows from Search"""
 
@@ -1911,6 +3642,7 @@ def GetRows(browser):
 
     return rows
 
+# deprecated
 @Eventing("Entering GetData", "Exiting GetData")
 def GetData(browser, frame_name=None):
     """Get Data"""
@@ -2000,6 +3732,7 @@ def GetData(browser, frame_name=None):
     return records
 
 
+# deprecated
 def PausePlayer(browser, timeout=5):
     """Pause Player"""
 
@@ -2027,6 +3760,7 @@ def PausePlayer(browser, timeout=5):
     DbgExit(dbgblk, dbglb)
 
 
+# deprecated
 def WaitPresenceCSS(browser, timeout, selector):
     """Wait for Something to be present"""
 
@@ -2068,6 +3802,7 @@ def WaitPresenceCSS(browser, timeout, selector):
     return resultset
 
 
+# deprecated
 def StalledDownload(browser, rowkey=None):
     """Check for Stalled Download"""
 
@@ -2127,6 +3862,7 @@ def StalledDownload(browser, rowkey=None):
     return stalled
 
 
+# deprecated
 def WarningMsg(browser, rowkey=None):
     """Check for a Warning Popup"""
 
@@ -2207,6 +3943,7 @@ def WarningMsg(browser, rowkey=None):
     return errmsg
 
 
+# deprecated
 def ActivateRow(browser, row, rowkey=None):
     """Activate Row"""
 
@@ -2247,6 +3984,7 @@ def ActivateRow(browser, row, rowkey=None):
     return success
 
 
+# deprecated
 def OpenDownloadsTab(browser):
     """Open Downloads Tab"""
 
@@ -2263,6 +4001,7 @@ def OpenDownloadsTab(browser):
     return originalHandle, tabHandle
 
 
+# deprecated
 def GetDownloads(browser, downloadsTab, sleep_time=3):
     """Get List of Downloads In Download Tab"""
 
@@ -2311,6 +4050,7 @@ def GetDownloads(browser, downloadsTab, sleep_time=3):
     return downloadDict
 
 
+# deprecated
 def CloseDownloadsTab(browser, originalTab, downloadsTab):
     """Close Downloads Tab"""
 
@@ -2321,6 +4061,7 @@ def CloseDownloadsTab(browser, originalTab, downloadsTab):
     SwitchWindow(browser, originalTab)
 
 
+# deprecated
 def AttributeChanged(object, attribute, value):
     """Check if attribute Changed"""
 
@@ -2334,6 +4075,7 @@ def AttributeChanged(object, attribute, value):
     return flag
 
 
+# deprecated
 def TagToAppear(browser, selectorType, selector, timeout=5):
     """Wait for Tag to Appear"""
 
@@ -2349,6 +4091,7 @@ def TagToAppear(browser, selectorType, selector, timeout=5):
     return result
 
 
+# deprecated
 def WaitUntilTrue(time_period, func, *args, **kwargs):
     """Wait Until Something is True"""
 
@@ -2368,6 +4111,7 @@ def WaitUntilTrue(time_period, func, *args, **kwargs):
     return result
 
 
+# deprecated
 @Eventing("Starting Search")
 def Search(browser, startDate, endDate):
     """Set and Conduct Search"""
@@ -2486,6 +4230,7 @@ def Search(browser, startDate, endDate):
     DbgExit(dbgblk, dbglb)
 
 
+# deprecated
 def BeginDownload(browser, vrec=None):
     """Begin Download"""
 
@@ -2561,6 +4306,7 @@ def BeginDownload(browser, vrec=None):
     return success
 
 
+# deprecated
 def Download(browser, voice_recording, frame_name=None, rows=None):
     """Download Recording"""
 
@@ -2649,6 +4395,7 @@ def Download(browser, voice_recording, frame_name=None, rows=None):
     return success
 
 
+# deprecated
 def CompleteBadRecording(download):
     """Complete a bad download"""
 
@@ -2667,6 +4414,7 @@ def CompleteBadRecording(download):
         download.AddToBad()
 
 
+# deprecated
 def SaveMetaInfo(download):
     """Save Meta Info"""
 
@@ -2684,6 +4432,7 @@ def SaveMetaInfo(download):
     AppendRows(catalogFilename, recording.data)
 
 
+# deprecated
 def CompleteDownload(download):
     """Complete Download"""
 
@@ -2722,6 +4471,7 @@ def CompleteDownload(download):
     DbgExit(dbgblk, dbglb)
 
 
+# deprecated
 def CheckActiveDownloads(browser, downloadTab, activeDownloads, downloadCount, sleep_time=3, pause=2):
     """Check (and/or Wait for) Active Downloads"""
 
@@ -2754,6 +4504,7 @@ def CheckActiveDownloads(browser, downloadTab, activeDownloads, downloadCount, s
     return completedCount
 
 
+# deprecated
 def BatchDownloading(browser, downloadpath):
     """Download Items"""
 
@@ -2873,6 +4624,7 @@ def BatchDownloading(browser, downloadpath):
     DbgExit(dbgblk, dbglb)
 
 
+# deprecated
 def POC(browser):
     """POC of download system"""
 
@@ -2887,6 +4639,7 @@ def POC(browser):
     Download(browser, data[0])
 
 
+# deprecated
 def GetVoiceRecordings(browser, url, downloadpath):
     """Get ACS Voice Recordings... Probably"""
 
@@ -3216,7 +4969,7 @@ if __name__ == '__main__':
 
     urls = {
         "packt": "https://www.packtpub.com/free-learning/",
-        "acs": "https://129.49.122.190/POWERplayWeb/",
+        "asc": "https://129.49.122.190/POWERplayWeb/",
         "tsa": "https://techstepacademy.com/training-ground/",
         "tsatrial": "https://techstepacademy.com/trial-of-the-stones/"
     }
@@ -3236,6 +4989,8 @@ if __name__ == '__main__':
     if args.test:
         testmode()
     elif cmd in ["asc", ""] or cmd is None:
+        url = urls["asc"]
+
         Username = config["asc_creds"]["username"]
         Password = config["asc_creds"]["password"]
 
@@ -3310,10 +5065,9 @@ if __name__ == '__main__':
             Msg(f"Start On\t: {startOn}")
             Msg(f"End On\t\t: {endOn}")
         else:
-            options = DownloadOptions(downloadPath)
-            chrome = webdriver.Chrome(options=options)
+            asc_browser = ASCBrowser(url, downloadPath)
 
-            GetVoiceRecordings(chrome, urls["acs"], downloadPath)
+            asc_browser.GetVoiceRecordings(interval, Username, Password)
     elif cmd == "dev":
         Username = config["asc_creds"]["username"]
         Password = config["asc_creds"]["password"]
