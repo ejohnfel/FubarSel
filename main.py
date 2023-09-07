@@ -93,6 +93,135 @@ def Eventing(start_message, end_message=None, leave=False):
 
 # Classes
 
+class DynamicBreakpoint:
+    """Dynamic Breakpoint Class"""
+
+    break_on_detect = False
+    enabled = False
+
+    labels = list()
+    lines = list()
+    conditions = dict()
+
+    def __init__(self, enabled=True, break_on_detect=False):
+        """Initialize Instance"""
+
+        self.break_on_detect = break_on_detect
+        self.enabled = enabled
+
+    def Break(self, dbglabel=None):
+        """Break if enabled (and None, or dbglabel in list of labels"""
+
+        breakme = False
+
+        if self.enabled:
+            if dbglabel is None or dbglabel in self.labels:
+                breakme = True
+
+            if self.break_on_detect and breakme:
+                breakpoint()
+
+        return breakme
+
+    def BreakOnTrue(self, value):
+        """Break On Value True"""
+
+        if self.enabled and value:
+            if self.break_on_detect:
+                breakpoint()
+
+            return True
+
+        return False
+
+    def BreakOnLine(self):
+        """Break on Line"""
+
+        frame = inspect.currentframe()
+
+        if self.enabled:
+            caller = frame.f_back
+
+            line_number = caller.f_lineno
+
+            if line_number in self.lines:
+                if self.break_on_detect:
+                    breakpoint()
+
+                return True
+
+        return False
+
+    def BreakCondition(self, name, condition):
+        """Break On Condition"""
+
+        breakme = False
+
+        if self.enabled and name in self.conditions:
+            cnx = self.conditions[name]
+
+            if type(cnx) is type(condition):
+                breakme = (cnx == condition)
+
+                if self.break_on_detect:
+                    breakpoint()
+
+        return breakme
+
+    def AddLabels(self, *dbglabels):
+        """Add Labels"""
+
+        for lb in dbglabels:
+            if not lb in self.labels:
+                self.labels.append(lb)
+
+    def RemoveLabels(self, *dbglabels):
+        """Remove Label"""
+
+        for lb in dbglabels:
+            if lb in self.labels:
+                self.labels.remove(lb)
+
+    def AddLines(self, *lines):
+        """Add Lines to break on"""
+
+        for line in lines:
+            if not line in self.lines:
+                lines.append(line)
+
+    def RemoveLines(self, *lines):
+        """Remove Line Numbers"""
+
+        for line in lines:
+            if line in self.lines:
+                self.lines.remove(line)
+
+    def AddCondition(self, name, condition):
+        """Add Conditions"""
+
+        if not name in self.conditions:
+            self.conditions[name] = condition
+
+    def RemoveCondition(self, name):
+        """Remove Condition"""
+
+        if name in self.conditions:
+            del self.conditions[name]
+
+    def Enabled(self, value=None):
+        """Enable/ARM or Disable/Disarm Dynamic Breakpoint"""
+
+        if value is not None:
+            self.enabled = value
+
+        return self.enabled
+
+    def BreakOnDetect(self, value):
+        """Set Break On Detect"""
+
+        self.break_on_detect = value
+
+
 class SleepShortCuts:
     """Sleep Shortcuts"""
 
@@ -334,6 +463,15 @@ class Browser(SleepShortCuts):
 
         DbgExit(dbgblk, dbglb)
 
+    def SwitchShadowRootFrame(self, name, pause=0):
+        """Switch to Frame in Shadow Root"""
+
+        success = False
+
+        ph.NotImplementedYet()
+
+        return success
+
     def SwitchFrame(self, name, pause=0):
         """Context/Content Switch Helper"""
 
@@ -345,7 +483,14 @@ class Browser(SleepShortCuts):
             self.Sleep(pause)
 
         try:
-            self.browser.switch_to.frame(name)
+            frame = None
+
+            if type(name) is int:
+                frame = name
+            else:
+                frame = self.ByCSS(f"frame[name='{name}']")
+
+            self.browser.switch_to.frame(frame)
             success = True
         except NoSuchFrameException:
             DbgMsg(f"No such frame {name}", dbglabel=dbglb)
@@ -503,7 +648,7 @@ class Browser(SleepShortCuts):
 
         return result
 
-    def WaitPresenceCSS(self, timeout, selector):
+    def WaitPresenceCSS(self, timeout, selector, msg=""):
         """Wait for Something to be present"""
 
         dbgblk, dbglb = DbgNames(self.WaitPresenceCSS)
@@ -519,13 +664,19 @@ class Browser(SleepShortCuts):
         resultset["error"] = (False, None)
         resultset["item"] = None
 
+        if msg != "":
+            msg = f"- {msg}"
+
         try:
-            DbgMsg(f"Waiting for : {selector}", dbglabel=dbglb)
+            DbgMsg(f"Waiting for : {selector} {msg}", dbglabel=dbglb)
 
             WebDriverWait(self.browser, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
             resultset["present"] = True
 
             resultset["item"] = self.ByCSS(selector)
+
+            if DebugMode() and msg == "Waiting for save box":
+                breakpoint()
         except TimeoutException as t_err:
             resultset["timeout"] = True
             resultset["error"] = (True, t_err)
@@ -608,7 +759,8 @@ class ASCBrowser(Browser):
 
     ascTab = None
     downloadsTab = None
-    mainFrame = "applicationFrame"
+    # mainFrame = "applicationFrame"
+    mainFrame = 0
 
     def __init__(self, url, download_path):
         """Intitialize Instance"""
@@ -617,7 +769,7 @@ class ASCBrowser(Browser):
 
         self.SetContexts()
 
-    def SetContexts(self, frame="applicationFrame"):
+    def SetContexts(self, frame=0):
         """Set Contexts"""
 
         dbgblk, dbglb = DbgNames(self.SetContexts)
@@ -1081,7 +1233,7 @@ class ASCBrowser(Browser):
 
         stalled = False
 
-        result = self.WaitPresenceCSS(3, saveBoxCss)
+        result = self.WaitPresenceCSS(3, saveBoxCss, msg="Waiting for save box")
 
         if result["present"]:
             timechk = datetime.now()
@@ -1089,7 +1241,7 @@ class ASCBrowser(Browser):
             while result["present"] and not stalled:
                 self.Quarter()
 
-                result = self.WaitPresenceCSS(1, saveBoxCss)
+                result = self.WaitPresenceCSS(1, saveBoxCss, msg="Waiting for save box, first shot missed")
 
                 if result["present"]:
                     time_passed = datetime.now() - timechk
@@ -1110,14 +1262,17 @@ class ASCBrowser(Browser):
                                     obBtn.click()
                                     DbgMsg("Came across case where save dialog was up and not stalled")
                                 except Exception as err:
-                                    DbgMsg("Save dialog stalled or not, can't tell")
+                                    DbgMsg("Save dialog stalled or not, can't tell", dbglabel=dbglb)
                         elif time_passed.seconds > 10:
                             stalled = True
                             if cancelBtn is not None:
                                 cancelBtn.click()
 
         if stalled and DebugMode():
-            DbgMsg(f"Stalled on rowkey {rowkey}")
+            DbgMsg(f"Stalled on rowkey {rowkey}", dbglabel=dbglb)
+            dynBreak.Break(dbgblk)
+            if DebugMode():
+                breakpoint()
 
         DbgExit(dbgblk, dbglb)
 
@@ -1217,7 +1372,6 @@ class ASCBrowser(Browser):
 
         try:
             self.DoubleClickAction(element=row)
-            # ActionChains(self.browser).move_to_element(row).double_click().perform()
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
 
@@ -1439,19 +1593,22 @@ class ASCBrowser(Browser):
         self.Half()
 
         audioEnabled = False
+        count = 0
 
         try:
+            aiObj = edom(audioInput)
+
             if audioInputDis is None and audioInput is not None and audioInput.is_displayed() and audioInput.is_enabled():
+
                 audioEnabled = True
 
-                aiObj = edom(audioInput)
+                audioInput.click()
 
-                count = 0
+                self.Half()
 
                 while not aiObj.get_prop("checked", False) and count < 3:
                     self.Half()
                     audioInput.click()
-
                     count += 1
                 else:
                     if count > 2 and DebugMode():
@@ -1499,9 +1656,6 @@ class ASCBrowser(Browser):
 
         return success
 
-    def Maximize(self):
-        super().Maximize()
-
     def Download(self, voice_recording, frame_name=None, rows=None):
         """Download Recording"""
 
@@ -1528,24 +1682,18 @@ class ASCBrowser(Browser):
             self.SwitchFrame(frame_name)
 
         try:
-            if self.PopoutPresent(timeout=1):
-                self.ClosePopOut(frame_name)
-
-            stalled = self.StalledDownload(rowkey=last_rowkey)
-
-            if stalled:
-                lastprocessed.AddToBad()
-                lastprocessed.progress = 100
-
-                return success
-
-            self.Half()
-
             rowXPath = f"//tr[@data-rk='{rowkey}']"
             row = self.ByXPATH(rowXPath)
 
             # Activate Row
             success = self.ActivateRow(row, rowkey)
+
+            self.Half()
+
+            if self.PopoutPresent(timeout=3):
+                self.ClosePopOut(frame_name)
+
+            self.Half()
 
             if success:
                 # Begin Download
@@ -1562,6 +1710,16 @@ class ASCBrowser(Browser):
                     recording.data["Archived"] = "Audio Unavailable/Not Archived"
                     AppendRows(catalogFilename, recording.data)
                     Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
+                else:
+                    self.Half()
+
+                    stalled = self.StalledDownload(rowkey=last_rowkey)
+
+                    if stalled:
+                        lastprocessed.AddToBad()
+                        lastprocessed.progress = 100
+
+                        return success
             else:
                 global_temp = ("activation failed", rowkey)
                 Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
@@ -2592,6 +2750,10 @@ class VoiceDownload:
 
 
 # Variables
+
+dynBreak = DynamicBreakpoint()
+
+dynBreak.AddLabels("ASCBrowser.StalledDownload")
 
 downloadPathASC = r"S:\Backups\asc"
 sessionASC = f"{downloadPathASC}\\session1"
