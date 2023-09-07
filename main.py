@@ -1454,9 +1454,17 @@ class ASCBrowser(Browser):
 
                     count += 1
                 else:
-                    if count > 0 and DebugMode():
+                    if count > 2 and DebugMode():
                         DbgMsg("Audio checkbox appears to not be checked, look for spinner", dbglabel=dbglb)
                         breakpoint()
+
+                if aiObj.get_prop("checked", False):
+                    success = False
+                    cancelBtn.Click()
+
+                    DbgExit(dbgblk, dbglb)
+
+                    return success
 
                 self.Half()
 
@@ -1466,6 +1474,8 @@ class ASCBrowser(Browser):
 
                 okBtn.click()
             else:
+                DbgMsg("Cancelling download because audio checkbox is not checked", dbglabel=dbglb)
+
                 if DebugMode():
                     DbgMsg("Audio checkbox does not appear to be checked, look for spinner", dbglabel=dbglb)
                     breakpoint()
@@ -1488,6 +1498,9 @@ class ASCBrowser(Browser):
         DbgExit(dbgblk, dbglb)
 
         return success
+
+    def Maximize(self):
+        super().Maximize()
 
     def Download(self, voice_recording, frame_name=None, rows=None):
         """Download Recording"""
