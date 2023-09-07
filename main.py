@@ -1449,6 +1449,10 @@ class ASCBrowser(Browser):
                     audioInput.click()
 
                     count += 1
+                else:
+                    if count > 0 and DebugMode():
+                        DbgMsg("Audio checkbox appears to not be checked, look for spinner")
+                        breakpoint()
 
                 self.Half()
 
@@ -1458,6 +1462,10 @@ class ASCBrowser(Browser):
 
                 okBtn.click()
             else:
+                if DebugMode():
+                    DbgMsg("Audio checkbox does not appear to be checked, look for spinner")
+                    breakpoint()
+
                 success = False
                 self.Half()
                 cancelBtn.click()
@@ -1511,6 +1519,8 @@ class ASCBrowser(Browser):
             if stalled:
                 lastprocessed.AddToBad()
                 lastprocessed.progress = 100
+
+                return success
 
             self.Half()
 
