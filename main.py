@@ -369,6 +369,10 @@ class Browser(SleepShortCuts):
                 self.Half()
                 self.browser.switch_to.window(window_handle)
             except ConnectionResetError as crst:
+                if DebugMode():
+                    DbgMsg("We are disconnected, try to reconnect by stepping", dbglabel=dbglb)
+
+                    breakpoint()
                 self.Reconnect()
                 self.browser.switch_to.window(window_handle)
         except Exception as err:
@@ -1451,7 +1455,7 @@ class ASCBrowser(Browser):
                     count += 1
                 else:
                     if count > 0 and DebugMode():
-                        DbgMsg("Audio checkbox appears to not be checked, look for spinner")
+                        DbgMsg("Audio checkbox appears to not be checked, look for spinner", dbglabel=dbglb)
                         breakpoint()
 
                 self.Half()
@@ -1463,7 +1467,7 @@ class ASCBrowser(Browser):
                 okBtn.click()
             else:
                 if DebugMode():
-                    DbgMsg("Audio checkbox does not appear to be checked, look for spinner")
+                    DbgMsg("Audio checkbox does not appear to be checked, look for spinner", dbglabel=dbglb)
                     breakpoint()
 
                 success = False
