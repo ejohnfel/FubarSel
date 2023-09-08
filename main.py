@@ -5136,10 +5136,6 @@ if __name__ == '__main__':
 
     if args.debug:
         DebugMode(True)
-
-        if os.path.exists("dbglabels.txt"):
-            DbgMsg("Loading Debug Label Enablement file")
-            ph.LoadDebugEnableFile("dbglabels.txt")
     else:
         DebugMode(False)
 
@@ -5195,8 +5191,13 @@ if __name__ == '__main__':
         earlyTerminateFlag = Join(sessionASC, "terminate.txt")
         breakpointFlag = Join(sessionASC, "breakpoint.txt")
         RemoveFile(breakpointFlag, earlyTerminateFlag)
+        dbgLabels = config.get(sessionName, "dbglabels", fallback="dbglabels.txt")
 
         ph.Logfile = runlog = Join(sessionASC, runlogName)
+
+        if os.path.exists(dbglabels):
+            DbgMsg("Loading Debug Label Enablement file")
+            ph.LoadDebugEnableFile(dbglabels)
 
         if args.term:
             ph.Touch(earlyTerminateFlag)
