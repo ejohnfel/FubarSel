@@ -1611,17 +1611,14 @@ class ASCBrowser(Browser):
                     audioInput.click()
                     count += 1
                 else:
-                    if count > 2 and DebugMode():
-                        DbgMsg("Audio checkbox appears to not be checked, look for spinner", dbglabel=dbglb)
-                        breakpoint()
+                    if count > 2 and not aiObj.get_prop("checked", False):
+                        success = False
 
-                if aiObj.get_prop("checked", False):
-                    success = False
-                    cancelBtn.Click()
+                        cancelBtn.click()
 
-                    DbgExit(dbgblk, dbglb)
+                        DbgExit(dbgblk, dbglb)
 
-                    return success
+                        return success
 
                 self.Half()
 
