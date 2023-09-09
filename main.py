@@ -594,13 +594,13 @@ class Browser(SleepShortCuts):
         """Helper for Getting Past Bad Certs"""
 
         adv_btn = self.ByCSS("button[id='details-button']")
-        adv_btn.click()
+        self.ClickAction(element=adv_btn)
 
         self.Half()
 
         anchor = self.ByCSS("div > p > a[id='proceed-link']")
 
-        anchor.click()
+        self.ClickAction(element=anchor)
 
         self.Sleep()
 
@@ -697,18 +697,18 @@ class Browser(SleepShortCuts):
     def WaitVisibleCSS(self, selector, timeout=2):
         """Wait until Element is Visible"""
 
-        results = ( True, None )
+        results = (True, None)
 
         try:
             WebDriverWait(self.browser, timeout).until(visibility_of_element_located((By.CSS_SELECTOR, selector)))
         except TimeoutException as t_err:
-            results = ( False, t_err )
+            results = (False, t_err)
         except NoSuchElementException as ns_err:
-            results = ( False, ns_err )
+            results = (False, ns_err)
         except StaleElementReferenceException as s_err:
-            results = ( False, s_err )
+            results = (False, s_err)
         except Exception as err:
-            results = ( False, err )
+            results = (False, err)
             DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
 
         return results
@@ -743,7 +743,15 @@ class Browser(SleepShortCuts):
         if selector is not None:
             element = self.ByCSS(selector)
 
-        ActionChains(self.browser).move_to_element(element).click().perform()
+        ActionChains(self.browser).move_to_element(element).click(element).perform()
+
+    def JClickAction(self, selector=None, element=None):
+        """Java Click Action"""
+
+        if selector is not None:
+            element = self.ByCSS(selector)
+
+        self.browser.execute_script("arguments[0].click()", element)
 
     def DoubleClickAction(self, selector=None, element=None):
         """Use Action to Click Element By Locator"""
@@ -899,7 +907,7 @@ class ASCBrowser(Browser):
 
             self.Half()
 
-            submitButton.click()
+            self.ClickAction(element=submitButton)
 
             self.Second()
 
@@ -927,11 +935,11 @@ class ASCBrowser(Browser):
 
         logoffAnchor = self.ByCSS(anchorID)
 
-        spanobj.click()
+        self.ClickAction(element=spanobj)
 
         WebDriverWait(self.browser, 30).until(visibility_of(logoffAnchor))
 
-        logoffAnchor.click()
+        self.ClickAction(element=logoffAnchor)
 
         DbgExit(dbgblk, dbglb)
 
@@ -1031,7 +1039,7 @@ class ASCBrowser(Browser):
             if italics.is_displayed():
                 self.Half()
                 DbgMsg("Trying to close/click Popout", dbglabel=dbglb)
-                italics.click()
+                self.ClickAction(element=italics)
                 DbgMsg("Popout should be closed", dbglabel=dbglb)
                 self.Half()
 
@@ -1205,7 +1213,7 @@ class ASCBrowser(Browser):
         try:
             WebDriverWait(self.browser, timeout).until(visibility_of(pauseBtn))
 
-            pauseBtn.click()
+            self.ClickAction(element=pauseBtn)
         except TimeoutException:
             DbgMsg("Timeout reached, player control is not visible or accessible, BAD", dbglabel=dbglb)
         except NoSuchElementException:
@@ -1252,21 +1260,22 @@ class ASCBrowser(Browser):
 
                         if cancelBtn is not None and progress is not None and time_passed.seconds <= 10:
                             if progress.text == "0%":
-                                cancelBtn.click()
+                                self.ClickAction(element=cancelBtn)
                                 stalled = True
                             elif progress.text == "":
                                 try:
                                     # Last ditch chance to complete d/l
                                     okBtn = self.ByCSS(btnOkCSS)
 
-                                    obBtn.click()
+                                    #obBtn.click()
+                                    self.ClickAction(obBtn)
                                     DbgMsg("Came across case where save dialog was up and not stalled")
                                 except Exception as err:
                                     DbgMsg("Save dialog stalled or not, can't tell", dbglabel=dbglb)
                         elif time_passed.seconds > 10:
                             stalled = True
                             if cancelBtn is not None:
-                                cancelBtn.click()
+                                self.ClickAction(element=cancelBtn)
 
         if stalled and DebugMode():
             DbgMsg(f"Stalled on rowkey {rowkey}", dbglabel=dbglb)
@@ -1325,7 +1334,7 @@ class ASCBrowser(Browser):
                     errmsg = edom(msg)["innerText"]
 
                     DbgMsg(f"Warning is displayed AND enabled with '{errmsg}' for {rowkey}", dbglabel=dbglb)
-                    warning.click()
+                    self.ClickAction(element=warning)
                     self.Sleep(3)
                 else:
                     DbgMsg(f"Warning detected for {rowkey}", dbglabel=dbglb)
@@ -1461,7 +1470,7 @@ class ASCBrowser(Browser):
                 Event("Looking for general dropdown button")
                 # Find "General dropdown
                 general = self.ByCSS("a[id='conversationToolbar:commonFunctionsMenuBtn']")
-                general.click()
+                self.ClickAction(element=general)
                 Event("General dropdown clicked")
             except Exception as err:
                 Event(f"General dropdown button could not be found, {err}")
@@ -1472,7 +1481,7 @@ class ASCBrowser(Browser):
                 Event("Looking for search anchor")
                 # Find Search anchor and click it
                 anchor = self.ByCSS("a[id='conversationToolbar:toolbarSearchBtn']")
-                anchor.click()
+                self.ClickAction(element=anchor)
                 Event("Anchor clicked")
             except Exception as err:
                 Event(f"Anchor either not found or not clicked : {err}")
@@ -1527,8 +1536,7 @@ class ASCBrowser(Browser):
                 DbgMsg(f"Conducting search between {startDate} and {endDate}", dbglabel=dbglb)
 
                 # Start Search
-                searchBtn.click()
-
+                self.ClickAction(element=searchBtn)
                 Event("Search completed")
             except Exception as err:
                 Event(f"An error occurred while filling out the search : {err}")
@@ -1546,7 +1554,7 @@ class ASCBrowser(Browser):
             Msg(f"Elapsed search time : {searchDuration}")
 
             # Close Search Box
-            closeAnchor.click()
+            self.ClickAction(element=closeAnchor)
 
             Event("Close anchor clicked, we done")
         except Exception as err:
@@ -1568,6 +1576,20 @@ class ASCBrowser(Browser):
 
         DbgEnter(dbgblk, dbglb)
 
+        def audioCheckboxTest(*args, **kwargs):
+            """Internal Test for Checkbox"""
+
+            self.Tenth()
+
+            checkbox = args[0]
+
+            ready = False
+
+            if checkbox.is_displayed() and checkbox.is_enabled():
+                ready = True
+
+            return ready
+
         success = True
         saveCss = "div[id='asc_playercontrols_savereplayables_btn']"
         mediaSrcsAudioCss = "li[class='mediasources_audio'] > label > input"
@@ -1579,7 +1601,7 @@ class ASCBrowser(Browser):
         self.ClosePopOut()
 
         saveBtn = self.ByCSS(saveCss)
-        saveBtn.click()
+        self.ClickAction(element=saveBtn)
 
         # Will Bring up dialog
         audioInputDis = None
@@ -1598,23 +1620,25 @@ class ASCBrowser(Browser):
         try:
             aiObj = edom(audioInput)
 
-            if audioInputDis is None and audioInput is not None and audioInput.is_displayed() and audioInput.is_enabled():
+            results = self.WaitUntilTrue(3, audioCheckboxTest, audioInput)
+
+            if audioInputDis is None and audioInput is not None and audioCheckboxTest(audioInput):
 
                 audioEnabled = True
 
-                audioInput.click()
+                self.ClickAction(element=audioInput)
 
                 self.Half()
 
                 while not aiObj.get_prop("checked", False) and count < 3:
                     self.Half()
-                    audioInput.click()
+                    self.ClickAction(element=audioInput)
                     count += 1
                 else:
                     if count > 2 and not aiObj.get_prop("checked", False):
                         success = False
 
-                        cancelBtn.click()
+                        self.ClickAction(element=cancelBtn)
 
                         DbgExit(dbgblk, dbglb)
 
@@ -1626,7 +1650,7 @@ class ASCBrowser(Browser):
 
                 self.Half()
 
-                okBtn.click()
+                self.ClickAction(element=okBtn)
             else:
                 DbgMsg("Cancelling download because audio checkbox is not checked", dbglabel=dbglb)
 
@@ -1636,7 +1660,7 @@ class ASCBrowser(Browser):
 
                 success = False
                 self.Half()
-                cancelBtn.click()
+                self.ClickAction(element=cancelBtn)
 
             self.Half()
         except ElementClickInterceptedException:
@@ -1933,7 +1957,7 @@ class ASCBrowser(Browser):
 
                 if nextBtn.get_attribute("class") != nextClassDisabled:
                     # More pages of items for this search to download
-                    nextBtn.click()
+                    self.ClickAction(element=nextBtn)
                     self.Sleep(4)
                 else:
                     # No more items to download for this search
@@ -5191,13 +5215,13 @@ if __name__ == '__main__':
         earlyTerminateFlag = Join(sessionASC, "terminate.txt")
         breakpointFlag = Join(sessionASC, "breakpoint.txt")
         RemoveFile(breakpointFlag, earlyTerminateFlag)
-        dbgLabels = config.get(sessionName, "dbglabels", fallback="dbglabels.txt")
+        dbgLabels = config.get(sessionName, "debuglabels", fallback="dbglabels.txt")
 
         ph.Logfile = runlog = Join(sessionASC, runlogName)
 
-        if os.path.exists(dbglabels):
+        if os.path.exists(dbgLabels):
             DbgMsg("Loading Debug Label Enablement file")
-            ph.LoadDebugEnableFile(dbglabels)
+            ph.LoadDebugEnableFile(dbgLabels)
 
         if args.term:
             ph.Touch(earlyTerminateFlag)
