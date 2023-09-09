@@ -594,13 +594,13 @@ class Browser(SleepShortCuts):
         """Helper for Getting Past Bad Certs"""
 
         adv_btn = self.ByCSS("button[id='details-button']")
-        self.ClickAction(element=adv_btn)
+        self.ClickActionObj(adv_btn)
 
         self.Half()
 
         anchor = self.ByCSS("div > p > a[id='proceed-link']")
 
-        self.ClickAction(element=anchor)
+        self.ClickActionObj(anchor)
 
         self.Sleep()
 
@@ -737,27 +737,120 @@ class Browser(SleepShortCuts):
 
         self.browser.execute_script("arguments[0].scrollIntoView(true);", element)
 
-    def ClickAction(self, selector=None, element=None):
-        """Use Action to Click Element By Locator"""
+    def ClickActionCSS(self, selector):
+        """Use Action to Click Element By CSS Selector"""
 
-        if selector is not None:
-            element = self.ByCSS(selector)
+        element = self.ByCSS(selector)
 
         ActionChains(self.browser).move_to_element(element).click(element).perform()
 
-    def JClickAction(self, selector=None, element=None):
-        """Java Click Action"""
+    def ClickActionXPATH(self, selector):
+        """Use Action to Click Element By XPATH Selector"""
 
-        if selector is not None:
-            element = self.ByCSS(selector)
+        element = self.ByXPATH(selector)
+
+        ActionChains(self.browser).move_to_element(element).click(element).perform()
+
+    def ClickActionObj(self, element):
+        """Use Action to Click Web Element"""
+
+        ActionChains(self.browser).move_to_element(element).click(element).perform()
+
+    def ClickAction(self, item):
+        """Use Action to Click Element, By CSS, XPATH or WebObject"""
+
+        element = None
+
+        if type(item) is str:
+            # This is a bad, minimal, expression for an XPath, but we aren't looking for high accurracy here
+            expr = r"(//.*){1,3}"
+
+            if re.search(expr, item):
+                # Probable XPATH
+                element = self.ByXPATH(item)
+            else:
+                # Probable CSS
+                element = self.ByCSS(item)
+        else:
+            element = item
+
+        ActionChains(self.browser).move_to_element(element).click(element).perform()
+
+    def JClickActionCSS(self, selector):
+        """Java Click Action by CSS Selector"""
+
+        element = self.ByCSS(selector)
 
         self.browser.execute_script("arguments[0].click()", element)
 
-    def DoubleClickAction(self, selector=None, element=None):
-        """Use Action to Click Element By Locator"""
+    def JClickActionXPATH(self, selector):
+        """Java Click Action by XPATH Selector"""
 
-        if selector is not None:
-            element = self.ByCSS(selector)
+        element = self.ByXPATH(selector)
+
+        self.browser.execute_script("arguments[0].click()", element)
+
+    def JClickActionObj(self, element):
+        """Java Click Action On Web Element"""
+
+        self.browser.execute_script("arguments[0].click()", element)
+
+    def JClickAction(self, item):
+        """Java Click Action by CSS, XPATH or Web Element"""
+
+        element = None
+
+        if type(item) is str:
+            # This is a bad, minimal, expression for an XPath, but we aren't looking for high accurracy here
+            expr = r"(//.*){1,3}"
+
+            if re.search(expr, item):
+                # Probable XPATH
+                element = self.ByXPATH(item)
+            else:
+                # Probable CSS
+                element = self.ByCSS(item)
+        else:
+            element = item
+
+        self.browser.execute_script("arguments[0].click()", element)
+
+    def DoubleClickActionCSS(self, selector):
+        """Use Action to Click Element By CSS Selector"""
+
+        element = self.ByCSS(selector)
+
+        ActionChains(self.browser).move_to_element(element).double_click().perform()
+
+    def DoubleClickActionXPATH(self, selector):
+        """Use Action to Click Element By XPATH Selector"""
+
+        element = self.ByXPATH(selector)
+
+        ActionChains(self.browser).move_to_element(element).double_click().perform()
+
+    def DoubleClickActionObj(self, element):
+        """Use Action to Click Element On Web Element"""
+
+        ActionChains(self.browser).move_to_element(element).double_click().perform()
+
+    def DoubleClickAction(self, item):
+        """Use Action to Click Element By CSS, XPATH or Web Element"""
+
+        element = None
+
+        if type(item) is str:
+            # This is a bad, minimal, expression for an XPath, but we aren't looking for high accurracy here
+            expr = r"(//.*){1,3}"
+
+            if re.search(expr, item):
+                # Probable XPATH
+                element = self.ByXPATH(item)
+            else:
+                # Probable CSS
+                element = self.ByCSS(item)
+        else:
+            element = item
 
         ActionChains(self.browser).move_to_element(element).double_click().perform()
 
@@ -907,7 +1000,7 @@ class ASCBrowser(Browser):
 
             self.Half()
 
-            self.ClickAction(element=submitButton)
+            self.ClickActionObj(submitButton)
 
             self.Second()
 
@@ -935,11 +1028,11 @@ class ASCBrowser(Browser):
 
         logoffAnchor = self.ByCSS(anchorID)
 
-        self.ClickAction(element=spanobj)
+        self.ClickActionObj(spanobj)
 
         WebDriverWait(self.browser, 30).until(visibility_of(logoffAnchor))
 
-        self.ClickAction(element=logoffAnchor)
+        self.ClickActionObj(logoffAnchor)
 
         DbgExit(dbgblk, dbglb)
 
@@ -1039,7 +1132,7 @@ class ASCBrowser(Browser):
             if italics.is_displayed():
                 self.Half()
                 DbgMsg("Trying to close/click Popout", dbglabel=dbglb)
-                self.ClickAction(element=italics)
+                self.ClickActionObj(italics)
                 DbgMsg("Popout should be closed", dbglabel=dbglb)
                 self.Half()
 
@@ -1188,6 +1281,8 @@ class ASCBrowser(Browser):
                     if BreakpointCheck(nobreak=True) and DebugMode():
                         DbgMsg(f"In {dbglb} when manual breakpoint detected", dbglabel=dbglb)
                         breakpoint()
+
+                DbgMsg(f"Items processed - {count}", dbglabel="Informational")
         except Exception as err:
             PrintEvents()
             ErrMsg(err, "An error occurred while trying to process rows from the search")
@@ -1213,7 +1308,7 @@ class ASCBrowser(Browser):
         try:
             WebDriverWait(self.browser, timeout).until(visibility_of(pauseBtn))
 
-            self.ClickAction(element=pauseBtn)
+            self.ClickActionObj(pauseBtn)
         except TimeoutException:
             DbgMsg("Timeout reached, player control is not visible or accessible, BAD", dbglabel=dbglb)
         except NoSuchElementException:
@@ -1260,7 +1355,7 @@ class ASCBrowser(Browser):
 
                         if cancelBtn is not None and progress is not None and time_passed.seconds <= 10:
                             if progress.text == "0%":
-                                self.ClickAction(element=cancelBtn)
+                                self.ClickActionObj(cancelBtn)
                                 stalled = True
                             elif progress.text == "":
                                 try:
@@ -1275,7 +1370,7 @@ class ASCBrowser(Browser):
                         elif time_passed.seconds > 10:
                             stalled = True
                             if cancelBtn is not None:
-                                self.ClickAction(element=cancelBtn)
+                                self.ClickActionObj(cancelBtn)
 
         if stalled and DebugMode():
             DbgMsg(f"Stalled on rowkey {rowkey}", dbglabel=dbglb)
@@ -1334,7 +1429,7 @@ class ASCBrowser(Browser):
                     errmsg = edom(msg)["innerText"]
 
                     DbgMsg(f"Warning is displayed AND enabled with '{errmsg}' for {rowkey}", dbglabel=dbglb)
-                    self.ClickAction(element=warning)
+                    self.ClickActionObj(warning)
                     self.Sleep(3)
                 else:
                     DbgMsg(f"Warning detected for {rowkey}", dbglabel=dbglb)
@@ -1470,7 +1565,7 @@ class ASCBrowser(Browser):
                 Event("Looking for general dropdown button")
                 # Find "General dropdown
                 general = self.ByCSS("a[id='conversationToolbar:commonFunctionsMenuBtn']")
-                self.ClickAction(element=general)
+                self.ClickActionObj(general)
                 Event("General dropdown clicked")
             except Exception as err:
                 Event(f"General dropdown button could not be found, {err}")
@@ -1481,7 +1576,7 @@ class ASCBrowser(Browser):
                 Event("Looking for search anchor")
                 # Find Search anchor and click it
                 anchor = self.ByCSS("a[id='conversationToolbar:toolbarSearchBtn']")
-                self.ClickAction(element=anchor)
+                self.ClickActionObj(anchor)
                 Event("Anchor clicked")
             except Exception as err:
                 Event(f"Anchor either not found or not clicked : {err}")
@@ -1536,7 +1631,7 @@ class ASCBrowser(Browser):
                 DbgMsg(f"Conducting search between {startDate} and {endDate}", dbglabel=dbglb)
 
                 # Start Search
-                self.ClickAction(element=searchBtn)
+                self.ClickActionObj(searchBtn)
                 Event("Search completed")
             except Exception as err:
                 Event(f"An error occurred while filling out the search : {err}")
@@ -1554,7 +1649,7 @@ class ASCBrowser(Browser):
             Msg(f"Elapsed search time : {searchDuration}")
 
             # Close Search Box
-            self.ClickAction(element=closeAnchor)
+            self.ClickActionObj(closeAnchor)
 
             Event("Close anchor clicked, we done")
         except Exception as err:
@@ -1601,7 +1696,7 @@ class ASCBrowser(Browser):
         self.ClosePopOut()
 
         saveBtn = self.ByCSS(saveCss)
-        self.ClickAction(element=saveBtn)
+        self.ClickActionObj(saveBtn)
 
         # Will Bring up dialog
         audioInputDis = None
@@ -1626,19 +1721,19 @@ class ASCBrowser(Browser):
 
                 audioEnabled = True
 
-                self.ClickAction(element=audioInput)
+                self.ClickActionObj(audioInput)
 
                 self.Half()
 
                 while not aiObj.get_prop("checked", False) and count < 3:
                     self.Half()
-                    self.ClickAction(element=audioInput)
+                    self.ClickActionObj(audioInput)
                     count += 1
                 else:
                     if count > 2 and not aiObj.get_prop("checked", False):
                         success = False
 
-                        self.ClickAction(element=cancelBtn)
+                        self.ClickActionObj(cancelBtn)
 
                         DbgExit(dbgblk, dbglb)
 
@@ -1650,7 +1745,7 @@ class ASCBrowser(Browser):
 
                 self.Half()
 
-                self.ClickAction(element=okBtn)
+                self.ClickActionObj(okBtn)
             else:
                 DbgMsg("Cancelling download because audio checkbox is not checked", dbglabel=dbglb)
 
@@ -1660,7 +1755,7 @@ class ASCBrowser(Browser):
 
                 success = False
                 self.Half()
-                self.ClickAction(element=cancelBtn)
+                self.ClickActionObj(cancelBtn)
 
             self.Half()
         except ElementClickInterceptedException:
@@ -1922,6 +2017,9 @@ class ASCBrowser(Browser):
                 # Get Items on current page
                 data = self.GetData(self.mainFrame)
 
+                skipped=0
+                not_skipped = 0
+
                 for recording in data:
                     # Check recording to see if it's already downloaded or discardable in some other way
 
@@ -1931,6 +2029,8 @@ class ASCBrowser(Browser):
 
                     if recording_we_want:
                         DbgMsg(f"Recording {recording.data['Conversation ID']} will be downloaded", dbglabel=dbglb)
+
+                        not_skipped += 1
 
                         # Only allow for X number of simultaneousDownloads
                         if self.Download(vrec, self.mainFrame, data):
@@ -1944,6 +2044,7 @@ class ASCBrowser(Browser):
                             Msg(f"Download for recording {recording.data['Conversation ID']} had an error")
                     else:
                         DbgMsg(f"Recording {recording.data['Conversation ID']} will be skipped", dbglabel=dbglb)
+                        skipped += 1
                         continue
 
                     BreakpointCheck()
@@ -1951,13 +2052,15 @@ class ASCBrowser(Browser):
 
                     completed += self.CheckActiveDownloads(activeDownloads, simultaneousDownloads, 1.25)
 
+                DbgMsg(f"Not skipped - {not_skipped}, Skipped - {skipped}", dbglabel="Informational")
+
                 del data
 
                 nextBtn = self.ByCSS(nextButtonCss)
 
                 if nextBtn.get_attribute("class") != nextClassDisabled:
                     # More pages of items for this search to download
-                    self.ClickAction(element=nextBtn)
+                    self.ClickActionObj(nextBtn)
                     self.Sleep(4)
                 else:
                     # No more items to download for this search
@@ -1980,7 +2083,7 @@ class ASCBrowser(Browser):
 
         self.CloseDownloadsTab()
 
-        Msg(f"Completed\t: {completed}\nErrored\t: {errored}")
+        DbgMsg(f"Completed\t: {completed}\nErrored\t: {errored}", dbglabel="Informational")
 
         DbgExit(dbgblk, dbglb)
 
