@@ -39,6 +39,67 @@ from selenium.webdriver.support.select import Select
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support.expected_conditions import *
 
+# Pre-Class/Def Variable Block
+
+# Informational Debug Label
+informational = "Informational"
+
+downloadPathASC = r"S:\Backups\asc"
+sessionASC = f"{downloadPathASC}\\session1"
+downloadPathPackt = r"Y:\media\eBooks\Packt\freebies"
+
+downloadPath = None
+
+ConfigFile = "config.txt"
+
+config = None
+
+prefix = None
+
+earlyTerminateFlag = None
+breakpointFlag = None
+
+runlogName = "runlog.txt"
+
+# ASC Stuff
+badrecordingsName = "bad_recordings.txt"
+catalogfileName = "recordings_catalog.txt"
+
+configFilename = os.path.join(sessionASC, ConfigFile)
+catalogFilename = os.path.join(sessionASC, catalogfileName)
+badRecordings = os.path.join(sessionASC, badrecordingsName)
+
+# Date Intervals
+officialStart = datetime(2017, 1, 1, 0, 0, 0)
+officialEnd = datetime(2023, 8, 5, 0, 0, 0)
+
+simultaneousDownloads = 5
+
+interval = timedelta(hours=11,minutes=59,seconds=59)
+startOn = datetime.now() - interval
+endOn = datetime.now()
+
+recordingsCatalog = None
+
+# Generic Stuff
+runlog = None
+
+global_temp = None
+lastprocessed = None
+
+Username = None
+Password = None
+
+# Breakpoint stuff
+emergencyBreak = False
+debugBypass = False
+
+# List of BreakOn Conditions
+BreakOn = list()
+
+# List of Events Reported
+EventList = list()
+
 # Eventing Stuff
 
 def Event(comment):
@@ -270,6 +331,12 @@ class Browser(SleepShortCuts):
         self.options = DownloadOptions(download_path)
         self.browser = webdriver.Chrome(options=self.options)
         self.Get(url)
+
+    def Quit(self):
+        """Quit Browser"""
+
+        if self.browser is not None:
+            self.browser.quit()
 
     def Maximize(self):
         """Maximize Browser Windows Helper"""
@@ -563,6 +630,84 @@ class Browser(SleepShortCuts):
         DbgExit(dbgblk, dbglb)
 
         return self.browser
+
+    def OpenDownloadsTab(self):
+        """Open Downloads Tab"""
+
+        dbgblk, dbglb = DbgNames(self.OpenDownloadsTab)
+
+        DbgEnter(dbgblk, dbglb)
+
+        current_window = self.browser.current_window_handle
+
+        tab_handle = self.NewTab("chrome://downloads")
+
+        DbgExit(dbgblk, dbglb)
+
+        return current_window, tab_handle
+
+    def CloseDownloadsTab(self, downloads_tab, switch_to=None):
+        """Close Downloads Tab"""
+
+        dbgblk, dbglb = DbgNames(self.CloseDownsTab)
+
+        DbgEnter(dbgblk, dbglb)
+
+        self.SwitchWindow(downloads_tab)
+
+        self.browser.close()
+
+        if switch_to is not None:
+            self.SwitchWindow(switch_to)
+
+        DbgExit(dbgblk, dbglb)
+
+    def GetDownloads(self, downloadsTab, sleep_time=3):
+        """Get List of Downloads In Download Tab"""
+
+        dbgblk, dbglb = DbgNames(self.GetDownloads)
+
+        DbgEnter(dbgblk, dbglb)
+
+        if BreakpointCheck(nobreak=True) and DebugMode():
+            DbgMsg("Manual breakpoint detected", dbglabel=dbglb)
+            breakpoint()
+
+        originalTab = self.browser.current_window_handle
+
+        self.SwitchTab(downloadsTab)
+
+        if sleep_time > 0:
+            self.Sleep(sleep_time)
+
+        downloadsScript = "return document.querySelector('downloads-manager').shadowRoot.querySelectorAll('#downloadsList downloads-item')"
+
+        downloads = self.browser.execute_script(downloadsScript)
+
+        downloadDict = dict()
+
+        progress = {"value": "100"}
+
+        for download in downloads:
+            try:
+                fname = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#file-link"))
+
+                try:
+                    progress = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#progress"))
+                except NoSuchElementException:
+                    DbgMsg("No such element error, progress is not available, assuming 100%", dbglabel=dbglb)
+
+                downloadDict[fname["text"]] = int(progress["value"])
+            except NoSuchElementException:
+                DbgMsg("Could not file 'file-link' in shadow root of downloads-item")
+            except Exception as err:
+                Msg(f"Trouble getting download information : {err}")
+
+        self.SwitchTab(originalTab)
+
+        DbgExit(dbgblk, dbglb)
+
+        return downloadDict
 
     def DownloadOptions(self, folder_path, with_caps=False):
         """Set Browser Download Path"""
@@ -1044,6 +1189,13 @@ class ASCBrowser(Browser):
 
         sys.exit(-1)
 
+    def GetInterval(self, start, interval):
+        """Get End Time for Interval"""
+
+        end = start + interval - timedelta(seconds=1)
+
+        return end
+
     def BusySpinnerPresent(self, closeit=False):
         """Detect Busy Spinner"""
 
@@ -1510,53 +1662,6 @@ class ASCBrowser(Browser):
 
         return success
 
-    def GetDownloads(self, sleep_time=3):
-        """Get List of Downloads In Download Tab"""
-
-        dbgblk, dbglb = DbgNames(self.GetDownloads)
-
-        DbgEnter(dbgblk, dbglb)
-
-        if BreakpointCheck(nobreak=True) and DebugMode():
-            DbgMsg("Manual breakpoint detected", dbglabel=dbglb)
-            breakpoint()
-
-        originalTab = self.browser.current_window_handle
-
-        self.SwitchTab(self.downloadsTab)
-
-        if sleep_time > 0:
-            self.Sleep(sleep_time)
-
-        downloadsScript = "return document.querySelector('downloads-manager').shadowRoot.querySelectorAll('#downloadsList downloads-item')"
-
-        downloads = self.browser.execute_script(downloadsScript)
-
-        downloadDict = dict()
-
-        progress = {"value": "100"}
-
-        for download in downloads:
-            try:
-                fname = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#file-link"))
-
-                try:
-                    progress = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#progress"))
-                except NoSuchElementException:
-                    DbgMsg("No such element error, progress is not available, assuming 100%", dbglabel=dbglb)
-
-                downloadDict[fname["text"]] = int(progress["value"])
-            except NoSuchElementException:
-                DbgMsg("Could not file 'file-link' in shadow root of downloads-item")
-            except Exception as err:
-                Msg(f"Trouble getting download information : {err}")
-
-        self.MainContext()
-
-        DbgExit(dbgblk, dbglb)
-
-        return downloadDict
-
     @Eventing("Starting Search")
     def Search(self, startDate, endDate):
         """Set and Conduct Search"""
@@ -1672,6 +1777,53 @@ class ASCBrowser(Browser):
                 breakpoint()
 
         DbgExit(dbgblk, dbglb)
+
+    def GetDownloads(self, sleep_time=3):
+        """Get List of Downloads In Download Tab"""
+
+        dbgblk, dbglb = DbgNames(self.GetDownloads)
+
+        DbgEnter(dbgblk, dbglb)
+
+        if BreakpointCheck(nobreak=True) and DebugMode():
+            DbgMsg("Manual breakpoint detected", dbglabel=dbglb)
+            breakpoint()
+
+        originalTab = self.browser.current_window_handle
+
+        self.SwitchTab(self.downloadsTab)
+
+        if sleep_time > 0:
+            self.Sleep(sleep_time)
+
+        downloadsScript = "return document.querySelector('downloads-manager').shadowRoot.querySelectorAll('#downloadsList downloads-item')"
+
+        downloads = self.browser.execute_script(downloadsScript)
+
+        downloadDict = dict()
+
+        progress = {"value": "100"}
+
+        for download in downloads:
+            try:
+                fname = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#file-link"))
+
+                try:
+                    progress = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#progress"))
+                except NoSuchElementException:
+                    DbgMsg("No such element error, progress is not available, assuming 100%", dbglabel=dbglb)
+
+                downloadDict[fname["text"]] = int(progress["value"])
+            except NoSuchElementException:
+                DbgMsg("Could not file 'file-link' in shadow root of downloads-item")
+            except Exception as err:
+                Msg(f"Trouble getting download information : {err}")
+
+        self.MainContext()
+
+        DbgExit(dbgblk, dbglb)
+
+        return downloadDict
 
     def BeginDownload(self, vrec=None):
         """Begin Download"""
@@ -1982,6 +2134,8 @@ class ASCBrowser(Browser):
         # Open Downloads Tab For Inspection
         ascTab, downloadTab = self.OpenDownloadsTab()
 
+        # ascTab is set when ASCBrowser is instantiated, so we ignore here
+
         self.downloadsTab = downloadTab
 
         self.Sleep(4)
@@ -1996,7 +2150,7 @@ class ASCBrowser(Browser):
 
         # Search from start date to end date in increments of 5 downloads per until all files downloaded
         startDate = officialStart
-        searchInterval = timedelta(days=interval.days, hours=11, minutes=59, seconds=59)
+        searchInterval = interval
         correction = timedelta(seconds=1)
 
         activeDownloads = list()
@@ -2004,7 +2158,7 @@ class ASCBrowser(Browser):
         DbgMsg(f"Starting run between {startDate} and {officialEnd}", dbglabel=dbglb)
 
         while startDate < officialEnd:
-            endDate = startDate + searchInterval
+            endDate = startDate + searchInterval - correction
 
             self.MainContext()
 
@@ -2085,7 +2239,7 @@ class ASCBrowser(Browser):
             self.Sleep(8.0)
 
             startDate = endDate + correction
-            endDate = (startDate + searchInterval)
+            endDate = (startDate + searchInterval - correction)
 
         self.CloseDownloadsTab()
 
@@ -2895,65 +3049,7 @@ dynBreak = DynamicBreakpoint()
 
 dynBreak.AddLabels("ASCBrowser.StalledDownload")
 
-downloadPathASC = r"S:\Backups\asc"
-sessionASC = f"{downloadPathASC}\\session1"
-downloadPathPackt = r"Y:\media\eBooks\Packt\freebies"
-
-downloadPath = None
-
-ConfigFile = "config.txt"
-
-config = None
-
-prefix = None
-
-earlyTerminateFlag = None
-breakpointFlag = None
-
-runlogName = "runlog.txt"
-
-# ASC Stuff
-badrecordingsName = "bad_recordings.txt"
-catalogfileName = "recordings_catalog.txt"
-
-configFilename = os.path.join(sessionASC, ConfigFile)
-catalogFilename = os.path.join(sessionASC, catalogfileName)
-badRecordings = os.path.join(sessionASC, badrecordingsName)
-
-# Date Intervals
-officialStart = datetime(2017, 1, 1, 0, 0, 0)
-officialEnd = datetime(2023, 8, 5, 0, 0, 0)
-
-simultaneousDownloads = 5
-
-interval = timedelta(hours=11,minutes=59,seconds=59)
-startOn = datetime.now() - interval
-endOn = datetime.now()
-
-ascTab = None
-downloadTab = None
 mainFrame = "applicationFrame"
-
-recordingsCatalog = None
-
-# Generic Stuff
-runlog = None
-
-global_temp = None
-lastprocessed = None
-
-Username = None
-Password = None
-
-# Breakpoint stuff
-emergencyBreak = False
-debugBypass = False
-
-# List of BreakOn Conditions
-BreakOn = list()
-
-# List of Events Reported
-EventList = list()
 
 # Lambdas
 
@@ -3432,7 +3528,7 @@ def ShowCatalog(catalog=None):
 
 
 # deprecated
-def DownloadOptions(folderPath, withcaps= False):
+def DownloadOptions(folderPath, withcaps=False):
     """Set Browser Download Path"""
 
     options = Options()
@@ -3494,22 +3590,23 @@ def SmartLogin(browser):
 
     success = False
 
-    if SwitchFrame(browser, 0):
-        DbgMsg("Logging in",dbglabel=dbglb)
+    browser = ASCBrowser("url to login box")
 
-        userInput = browser.find_element(By.CSS_SELECTOR, "input[id='loginTabView:loginName:inputPanel:inputText']")
-        passwordInput = browser.find_element(By.CSS_SELECTOR,
-                                             "input[id='loginTabView:loginPassword:inputPanel:inputPassword']")
-        submitButton = browser.find_element(By.CSS_SELECTOR, "button[id='loginTabView:loginButton']")
+    if browser.SwitchFrame(browser, 0):
+        DbgMsg("Logging in", dbglabel=dbglb)
+
+        userInput = browser.ByCSS("input[id='loginTabView:loginName:inputPanel:inputText']")
+        passwordInput = browser.ByCSS("input[id='loginTabView:loginPassword:inputPanel:inputPassword']")
+        submitButton = browser.ByCSS("button[id='loginTabView:loginButton']")
 
         userInput.send_keys(Username)
         passwordInput.send_keys(Password)
 
-        Half()
+        browser.Half()
 
-        submitButton.click()
+        browser.ClickActionObj(submitButton)
 
-        Second()
+        browser.Second()
 
         success = True
     else:
@@ -3529,115 +3626,72 @@ def SmartLogout(browser):
     span = "table[id='powpwfteaper27'] > tbody > tr > td > span[id='powpwfteaper28']"
     anchorID = "a[id='logoutMenuItem']"
 
+    browser = ASCBrowser("url to main page")
 
-    spanobj = browser.find_element(By.CSS_SELECTOR, span)
+    spanobj = browser.ByCSS(span)
 
-    WebDriverWait(browser, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
+    WebDriverWait(browser.browser, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
 
-    logoffAnchor = browser.find_element(By.CSS_SELECTOR, anchorID)
+    logoffAnchor = browser.ByCSS(nchorID)
 
     spanobj.click()
 
-    WebDriverWait(browser, 30).until(visibility_of(logoffAnchor))
+    WebDriverWait(browser.browser, 30).until(visibility_of(logoffAnchor))
 
     logoffAnchor.click()
 
     DbgExit(dbgblk, dbglb)
 
 
-def VoiceDev(browser, url):
-    """Voice Dev"""
-
-    global Username, Password, mainFrame
-
-    dbgblk, dbglb = DbgNames(GetVoiceRecordings)
-
-    DbgEnter(dbgblk, dbglb)
-
-    # Setup the Browser (i.e. Navigate to URL)
-    SetupBrowser(browser, url)
-
-    # Make us bigggggg
-    # Maximize(browser)
-
-    # Get past bad cert
-    BadCert(browser)
-
-    # Cancel Login Dialog (Via Ait)
-    CancelDialog()
-
-    # Actual Login... but dumb... (via Ait)
-    if SmartLogin(browser):
-        # Replace with wait
-        Second()
-
-        # Nav to bidness page
-
-        SwitchFrame(browser, mainFrame)
-
-        startts = datetime(2017, 4, 2, 0, 0, 0)
-        endts = datetime(2017, 5, 2, 23, 59, 59)
-
-        Search(browser, startts, endts)
-
-        breakpoint()
-
-        SmartLogout(browser)
-
-    DbgExit(dbgblk, dbglb)
-
-
-def GeteBook(browser):
+def GeteBook(config, download_path):
     """Grab Free Daily eBooks from Packt"""
 
     # https://www.browserstack.com/guide/download-file-using-selenium-python
     # https://www.selenium.dev/documentation/test_practices/discouraged/file_downloads/
 
-    global Username, Password, config
+    global Username, Password
 
-    SetupBrowser(browser, config["packt"]["url1"])
-    #SetupBrowser(browser, "https://account.packtpub.com/login?returnUrl=referrer")
+    browser = Browser(config["packt"]["url1"], download_path)
 
-    Sleep(20)
+    browser.Sleep(20)
 
-    packtTab, downloadsTab = OpenDownloadsTab(browser)
+    packtTab, downloadsTab = browser.OpenDownloadsTab()
 
-    usernameBox = browser.find_element(By.CSS_SELECTOR, "input[name='email']")
-    passwordBox = browser.find_element(By.CSS_SELECTOR, "input[name='password']")
-    loginButton = browser.find_element(By.CSS_SELECTOR, "form[class='ng-untouched ng-pristine ng-invalid'] > button[type='submit']")
+    usernameBox = browser.ByCSS("input[name='email']")
+    passwordBox = browser.ByCSS("input[name='password']")
+    loginButton = browser.ByCSS("form[class='ng-untouched ng-pristine ng-invalid'] > button[type='submit']")
 
     usernameBox.send_keys(Username)
     passwordBox.send_keys(Password)
 
-    Half()
+    browser.Half()
 
-    loginButton.click()
+    browser.ClickActionObj(loginButton)
 
-    Sleep(3)
+    browser.Sleep(3)
 
-    Maximize(browser)
+    browser.Maximize()
 
     browser.get(config["packt"]["url2"])
 
     btnCss = "button[id='freeLearningClaimButton']"
 
-    WebDriverWait(browser, 120).until(presence_of_element_located((By.CSS_SELECTOR, btnCss)))
+    browser.WaitPresenceCSS(120, btnCss)
 
-    getAccessButton = browser.find_element(By.CSS_SELECTOR, btnCss)
+    getAccessButton = browser.ByCSS(btnCss)
 
-    getAccessButton.click()
+    browser.ClickActionObj(getAccessButton)
 
-    dlBtn = TagToAppear(browser, By.CSS_SELECTOR, "button[id='d4']", timeout=120)
+    dlBtn = browser.TagToAppear("button[id='d4']", timeout=120)
 
     while not (dlBtn.is_displayed() and dlBtn.is_enabled()):
-        Half()
+        browser.Half()
 
-    dlBtn.click()
+    browser.ClickActionObj(dlBtn)
 
-    pdfLink = browser.find_element(By.XPATH, "//div[@class='download-container book']/a[text()='PDF']")
-    pdfLink.click()
+    browser.ClickActionXPATH("//div[@class='download-container book']/a[text()='PDF']")
 
-    downloads = GetDownloads(browser, downloadsTab)
+    downloads = browser.GetDownloads(downloadsTab)
 
     terminate = False
 
@@ -3649,41 +3703,41 @@ def GeteBook(browser):
                 Half()
                 terminate = True
 
-    CloseDownloadsTab(browser, packtTab, downloadsTab)
+    browser.CloseDownloadsTab(downloadsTab, packtTab)
 
     if not DebugMode():
-        logoutLink = browser.find_element(By.XPATH, "//a[text()='Sign Out']")
+        logoutLink = browser.ByXPATH("//a[text()='Sign Out']")
+
+        browser.ClickActionObj(logoutLink)
 
 
-def GetTSA(browser, url):
-    SetupBrowser(browser, url)
+def GetTSA(url):
 
-    inputbox = browser.find_element(By.CSS_SELECTOR, "input[id='ipt1']")
+    browser = Browser(url)
+
+    inputbox = browser.ByCSS("input[id='ipt1']")
 
     inputbox.send_keys("Kewl!")
 
-    button1 = browser.find_element(By.CSS_SELECTOR, "button[id='b1']")
-    # button2 = browser.find_element(By.CSS_SELECTOR, "button[name='butn1']")
-
-    ebtn = edom(button1)
+    button1 = browser.ByCSS("button[id='b1']")
 
     if DebugMode():
         breakpoint()
 
-    Sleep(2)
+    browser.Sleep(2)
 
-    button1.click()
+    browser.ClickActionObj(button1)
 
-    Sleep(2)
+    browser.Sleep(2)
 
     # alert = browser.switch_to.alert
-    alert = Alert(browser)
+    alert = Alert(browser.browser)
     alert.accept()
 
     # Example XPath
-    button4 = browser.find_element(By.XPATH, "//button[@id='b4']")
+    button4 = browser.ByXPATH("//button[@id='b4']")
 
-    pb = browser.find_element(By.XPATH, "//b[text()='Product 1']/../../p")
+    pb = browser.ByXPATH("//b[text()='Product 1']/../../p")
 
     match = re.search(r"\$\d+(\.\d+){0,1}", pb.text)
     price = "0.00"
@@ -3691,47 +3745,51 @@ def GetTSA(browser, url):
     if match is not None:
         price = match[0][1:]
 
-    Sleep(2)
+    browser.Sleep(2)
 
     if DebugMode():
         breakpoint()
 
+    browser.Quit()
 
-def GetStones(browser, url):
-    SetupBrowser(browser, url)
+
+def GetStones(url):
+
+    browser = Browser(url)
 
     # Riddle of the rocks
-    r1 = browser.find_element(By.CSS_SELECTOR, "input[id='r1Input']")
-    r1btn = browser.find_element(By.CSS_SELECTOR, "button#r1Btn")
+    r1 = browser.ByCSS("input[id='r1Input']")
+    r1btn = browser.ByCSS("button#r1Btn")
     r1.send_keys("rock")
-    r1btn.click()
 
-    r1div = browser.find_element(By.XPATH, "//div[@id='passwordBanner']/h4")
+    browser.ClickActionObj(r1btn)
+
+    r1div = browser.ByXPATH("//div[@id='passwordBanner']/h4")
     password = r1div.text
 
     # Riddle of the secrets
-    r2 = browser.find_element(By.CSS_SELECTOR, "input[id='r2Input']")
-    r2btn = browser.find_element(By.CSS_SELECTOR, "button[id='r2Butn']")
+    r2 = browser.ByCSS("input[id='r2Input']")
+    r2btn = browser.ByCSS("button[id='r2Butn']")
 
     r2.send_keys(password)
-    r2btn.click()
+    browser.ClickActionObj(r2btn)
 
-    r2div = browser.find_element(By.XPATH, "//div[@id='successBanner1']")
+    r2div = browser.ByXPATH("//div[@id='successBanner1']")
 
     if r2div.get_attribute("style") != "display: none":
         # Rich people shit
 
-        rinput = browser.find_element(By.CSS_SELECTOR, "input[id='r3Input']")
-        rbtn = browser.find_element(By.CSS_SELECTOR, "button[id='r3Butn']")
+        rinput = browser.ByCSS("input[id='r3Input']")
+        rbtn = browser.ByCSS("button[id='r3Butn']")
 
         # Find people
 
-        items = browser.find_elements(By.XPATH, f"//div/span/b")
+        items = browser.ByXPATH(f"//div/span/b")
 
         people = dict()
 
         for item in items:
-            value = int(browser.find_element(By.XPATH, f"//div/span/b[text()='{item.text}']/../../p").text)
+            value = int(browser.ByXPATH(f"//div/span/b[text()='{item.text}']/../../p").text)
 
             people[item.text] = value
 
@@ -3750,19 +3808,19 @@ def GetStones(browser, url):
                     rinput.send_keys(person)
                     value = tmpValue
 
-        rbtn.click()
-        rdiv = browser.find_element(By.XPATH, "//div[@id='successBanner2']")
+        browser.ClickActionObj(rbtn)
+        rdiv = browser.ByXPATH("//div[@id='successBanner2']")
 
         if rdiv.get_attribute("style") != "display: none":
             print("You cheeky bastard!")
         else:
             print("Better luck next time mate!")
 
-        chkbtn = browser.find_element(By.CSS_SELECTOR, "button[id='checkButn']")
+        chkbtn = browser.ByCSS("button[id='checkButn']")
 
-        chkbtn.click()
+        browser.ClickActionObj(chkbtn)
 
-        div = browser.find_element(By.XPATH, "//div[@id='trialCompleteBanner']")
+        div = browser.ByXPATH("//div[@id='trialCompleteBanner']")
 
         if div.get_attribute("style") != "display: none;":
             print("You did it you magnificent bastard!")
@@ -3771,7 +3829,9 @@ def GetStones(browser, url):
 
         assert div.get_attribute("style") != "display: none;"
 
-        time.sleep(2)
+        browser.Sleep(2)
+
+        browser.Quit()
 
 
 def BuildParser():
@@ -3969,6 +4029,8 @@ if __name__ == '__main__':
 
             asc_browser.GetVoiceRecordings(interval, Username, Password)
     elif cmd == "dev":
+        ph.NotImplementedYet("Disabled during refactor")
+
         Username = config["asc_creds"]["username"]
         Password = config["asc_creds"]["password"]
 
@@ -3994,8 +4056,6 @@ if __name__ == '__main__':
 
         options = DownloadOptions(downloadPath)
         chrome = webdriver.Chrome(options=options)
-
-        VoiceDev(chrome, urls["acs"])
     elif cmd == "packt":
         Username = config["packt_creds"]["username"]
         Password = config["packt_creds"]["password"]
@@ -4007,22 +4067,13 @@ if __name__ == '__main__':
         if args.clearlog:
             os.remove(runlog)
 
-        # Example of downloading a file
-        # urllib.request.urlretrieve(src,downloadpath)
+        # Grid test???
+        #chrome = webdriver.Remote(command_executor="http://merry.digitalwicky.biz:4444", options=options)
 
-        options = DownloadOptions(downloadPath, withcaps=True)
-        #chrome = webdriver.Chrome(options=options)
-
-        chrome = webdriver.Remote(command_executor="http://merry.digitalwicky.biz:4444", options=options)
-
-        GeteBook(chrome)
+        GeteBook(config, downloadPath)
     else:
-        chrome = webdriver.Chrome()
-
-        GetTSA(chrome, urls["tsa"])
-        # GetStones(chrome, urls["tsatrial"])
-
-    chrome.quit()
+        GetTSA(urls["tsa"])
+        # GetStones(urls["tsatrial"])
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 
