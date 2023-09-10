@@ -66,7 +66,7 @@ def PrintEvents():
 
     if EventList is not None:
         for message in EventList:
-            Msg(message)
+            Msg(f"Event - {message}")
 
 
 def Eventing(start_message, end_message=None, leave=False):
@@ -1222,7 +1222,7 @@ class ASCBrowser(Browser):
         else:
             Event("Appears Popout WAS NOT closed for some reason")
 
-        Msg("************* >>>>>>>>>>>>> Getting Rows <<<<<<<<<<<<<")
+        DbgMsg("************* >>>>>>>>>>>>> Getting Rows <<<<<<<<<<<<<", dbglabel="Informational")
 
         norecs = "No records found"
 
@@ -1235,6 +1235,7 @@ class ASCBrowser(Browser):
             Event("Entering try-while block")
             while retry:
                 Event("Getting rows")
+
                 rows = self.GetRows()
 
                 records = list()
@@ -1243,18 +1244,22 @@ class ASCBrowser(Browser):
 
                 count = 1
                 for row in rows:
+                    Event("Creating RecordingRecord from row")
+
                     recording = RecordingRecord(row)
+
+                    Event("Checking for blank row")
+                    if self.BlankRow(recording):
+                        Event("Row is blank")
+                        DbgMsg(f"Row appears empty, skipping\n{recording.data}", dbglabel=dbglb)
+                        continue
+
+                    if DebugMode() and (recording.data is None or recording.rowkey is None):
+                        DbgMsg("Recording.data or recording.rowkey is none, why? PrintEvents() to see event list", dbglabel="Informational")
+                        breakpoint()
 
                     last_rowkey = recording.rowkey
                     Event(f"Processing {last_rowkey}")
-
-                    if self.BlankRow(recording):
-                        DbgMsg(f"Row for appears empty, skipping\n{recording.data}", dbglabel=dbglb)
-                        continue
-
-                    if DebugMode() and recording.data is None:
-                        DbgMsg("Recording.data is none, why?")
-                        breakpoint()
 
                     try:
                         Event("Checking for blanks, ie. no search results")
@@ -1475,11 +1480,12 @@ class ASCBrowser(Browser):
         conditions = {"rowkey": ""}
 
         try:
-            self.DoubleClickAction(element=row)
+            self.DoubleClickActionObj(row)
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
 
             if DebugMode():
+                DbgMsg("So your trace", dbglabel="Informational")
                 breakpoint()
 
         self.Half()
@@ -1718,7 +1724,6 @@ class ASCBrowser(Browser):
             results = self.WaitUntilTrue(3, audioCheckboxTest, audioInput)
 
             if audioInputDis is None and audioInput is not None and audioCheckboxTest(audioInput):
-
                 audioEnabled = True
 
                 self.ClickActionObj(audioInput)
@@ -1798,6 +1803,11 @@ class ASCBrowser(Browser):
             self.SwitchFrame(frame_name)
 
         try:
+            if self.PopoutPresent(timeout=3):
+                self.ClosePopOut(frame_name)
+
+            self.Half()
+
             rowXPath = f"//tr[@data-rk='{rowkey}']"
             row = self.ByXPATH(rowXPath)
 
@@ -1806,16 +1816,11 @@ class ASCBrowser(Browser):
 
             self.Half()
 
-            if self.PopoutPresent(timeout=3):
-                self.ClosePopOut(frame_name)
-
-            self.Half()
-
             if success:
                 # Begin Download
                 global_temp = ("activation succeeded", rowkey)
 
-                DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel=dbglb)
+                DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel="Informational")
 
                 if not self.BeginDownload(vrec=voice_recording):
                     global_temp = ("save failed", rowkey)
@@ -1933,7 +1938,7 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-    def CheckActiveDownloads(self, activeDownloads, downloadCount, sleep_time=3, pause=2):
+    def CheckActiveDownloads(self, activeDownloads, downloadCount, sleep_time=2, pause=1):
         """Check (and/or Wait for) Active Downloads"""
 
         dbgblk, dbglb = DbgNames(self.CheckActiveDownloads)
@@ -1942,7 +1947,7 @@ class ASCBrowser(Browser):
 
         completedCount = 0
 
-        while len(activeDownloads) >= downloadCount:
+        while len(activeDownloads) > downloadCount:
             for activeDownload in activeDownloads:
                 progress = activeDownload.GetDownloadProgress(self, sleep_time=sleep_time)
 
@@ -1956,9 +1961,6 @@ class ASCBrowser(Browser):
 
             if len(activeDownloads) >= simultaneousDownloads and pause > 0:
                 self.Sleep(pause)
-
-            BreakpointCheck()
-            CheckForEarlyTerminate()
 
         DbgExit(dbgblk, dbglb)
 
@@ -2017,8 +2019,9 @@ class ASCBrowser(Browser):
                 # Get Items on current page
                 data = self.GetData(self.mainFrame)
 
-                skipped=0
+                skipped = 0
                 not_skipped = 0
+                interval_errored = 0
 
                 for recording in data:
                     # Check recording to see if it's already downloaded or discardable in some other way
@@ -2040,6 +2043,7 @@ class ASCBrowser(Browser):
                                 activeDownloads.append(vrec)
                         else:
                             errored += 1
+                            interval_errored += 1
                             vrec.AddToBad()
                             Msg(f"Download for recording {recording.data['Conversation ID']} had an error")
                     else:
@@ -2047,29 +2051,28 @@ class ASCBrowser(Browser):
                         skipped += 1
                         continue
 
-                    BreakpointCheck()
-                    CheckForEarlyTerminate()
+                    completed += self.CheckActiveDownloads(activeDownloads, 0, 1.25)
 
-                    completed += self.CheckActiveDownloads(activeDownloads, simultaneousDownloads, 1.25)
-
-                DbgMsg(f"Not skipped - {not_skipped}, Skipped - {skipped}", dbglabel="Informational")
+                DbgMsg(f"Not skipped - {not_skipped}, Skipped - {skipped}, errored {interval_errored}", dbglabel="Informational")
 
                 del data
+
+                data = None
 
                 nextBtn = self.ByCSS(nextButtonCss)
 
                 if nextBtn.get_attribute("class") != nextClassDisabled:
                     # More pages of items for this search to download
                     self.ClickActionObj(nextBtn)
-                    self.Sleep(4)
+                    self.Sleep(2)
                 else:
-                    # No more items to download for this search
-                    # Now, make sure the D/Ls that are currently running complete
-
                     if len(activeDownloads) > 0:
-                        completed += self.CheckActiveDownloads(activeDownloads, 1, 0)
+                        completed += self.CheckActiveDownloads(activeDownloads, 0, 1)
 
                     present = self.BusySpinnerPresent(True)
+
+                    if present:
+                        DbgMsg("Busy Spinner is present, not good", dbglabel=dbglb)
 
                     break
 
@@ -2157,6 +2160,10 @@ class RecordingRecord:
     def GetCells(self, row):
         """Get Cells From Row"""
 
+        dbgblk, dbglb = DbgNames(self.GetCells)
+
+        DbgEnter(dbgblk, dbglb)
+
         header = [
             "Loaded",
             "Start Time",
@@ -2191,7 +2198,13 @@ class RecordingRecord:
             self.data = dict(zip(header, data_from_cells))
             self.rowkey = self.data["Conversation ID"]
         except Exception as err:
-            Msg("Failed to find TD that contains the cells with information")
+            DbgMsg("Failed to find TD that contains the cells with information", dbglabel=dbglb)
+
+            if DebugMode():
+                breakpoint()
+
+        DbgExit(dbgblk, dbglb)
+
 
     def Print(self):
         print(f"Rowkey\t: {self.rowkey}")
@@ -4904,6 +4917,8 @@ def BatchDownloading(browser, downloadpath):
                 completed += CheckActiveDownloads(browser, downloadTab, activeDownloads, simultaneousDownloads, 1.25)
 
             del data
+
+            data = None
 
             nextBtn = browser.find_element(By.CSS_SELECTOR, nextButtonCss)
 
