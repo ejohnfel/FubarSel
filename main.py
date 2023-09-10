@@ -1480,6 +1480,9 @@ class ASCBrowser(Browser):
         conditions = {"rowkey": ""}
 
         try:
+            if self.PopoutPresent(2):
+                self.ClosePopOut(self.mainFrame)
+
             self.DoubleClickActionObj(row)
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
