@@ -2,31 +2,28 @@
 
 # Regular stuff
 import os
-import io
 import sys
 import argparse
 import configparser
 import shutil
 import platform
 import csv
-import json
 import re
 import zipfile
-import datetime as dt
 from datetime import datetime, timedelta
 import time
 import inspect
 import functools
 import ait
 import py_helper as ph
-import requests
-import urllib
+
+import asyncio
+import threading
 
 # My Stuff
-from py_helper import CmdLineMode, DebugMode, DbgMsg, Msg, DbgEnter, DbgExit, DebugMe, DbgNames, DbgAuto, ErrMsg
+from py_helper import CmdLineMode, DebugMode, DbgMsg, Msg, DbgEnter, DbgExit, DbgNames, ErrMsg
 
 # Selenium Stuff
-import selenium.webdriver.support.wait as swait
 from selenium import webdriver
 from selenium.common.exceptions import *
 from selenium.webdriver.remote.webelement import WebElement
@@ -75,7 +72,7 @@ officialEnd = datetime(2023, 8, 5, 0, 0, 0)
 
 simultaneousDownloads = 5
 
-interval = timedelta(hours=11,minutes=59,seconds=59)
+interval = timedelta(hours=11, minutes=59, seconds=59)
 startOn = datetime.now() - interval
 endOn = datetime.now()
 
@@ -101,6 +98,7 @@ BreakOn = list()
 EventList = list()
 
 # Eventing Stuff
+
 
 def Event(comment):
     """Register An Event"""
@@ -233,7 +231,7 @@ class DynamicBreakpoint:
         """Add Labels"""
 
         for lb in dbglabels:
-            if not lb in self.labels:
+            if lb not in self.labels:
                 self.labels.append(lb)
 
     def RemoveLabels(self, *dbglabels):
@@ -243,12 +241,12 @@ class DynamicBreakpoint:
             if lb in self.labels:
                 self.labels.remove(lb)
 
-    def AddLines(self, *lines):
+    def AddLines(self, *new_lines):
         """Add Lines to break on"""
 
-        for line in lines:
-            if not line in self.lines:
-                lines.append(line)
+        for line in new_lines:
+            if line not in self.lines:
+                self.lines.append(line)
 
     def RemoveLines(self, *lines):
         """Remove Line Numbers"""
@@ -260,7 +258,7 @@ class DynamicBreakpoint:
     def AddCondition(self, name, condition):
         """Add Conditions"""
 
-        if not name in self.conditions:
+        if name not in self.conditions:
             self.conditions[name] = condition
 
     def RemoveCondition(self, name):
@@ -286,7 +284,8 @@ class DynamicBreakpoint:
 class SleepShortCuts:
     """Sleep Shortcuts"""
 
-    def Sleep(self, interval=1):
+    @staticmethod
+    def Sleep(interval=1.0):
         """Sleep given interval"""
 
         time.sleep(interval)
@@ -310,6 +309,26 @@ class SleepShortCuts:
         """Sleep a Second"""
 
         self.Sleep()
+
+    @staticmethod
+    def CallAfter(sleep_time, func):
+        """Thread Sleep Timer"""
+
+        t = threading.Timer(5, func)
+
+        t.start()
+
+    @staticmethod
+    def ThreadWait(wait_time):
+        """Threading Wait Time"""
+
+        threading.Event().wait(wait_time)
+
+    @staticmethod
+    async def AsyncSleep(sleep_time):
+        """Async Sleep"""
+
+        await asyncio.sleep(sleep_time)
 
 
 class Browser(SleepShortCuts):
@@ -425,6 +444,30 @@ class Browser(SleepShortCuts):
 
         return item
 
+    def ByCSSIn(self, element, css):
+        """Find Elements within another element"""
+
+        dbgblk, dbglb = DbgNames(self.ByCSSIn)
+
+        DbgEnter(dbgblk, dbglb)
+
+        item = None
+
+        try:
+            item = element.find_element(By.CSS_SELECTOR, css)
+        except TimeoutException:
+            DbgMsg("Timeout reached exception", dbglabel=dbglb)
+        except NoSuchElementException:
+            DbgMsg("No such element exception", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg("Stale element exception", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return item
+
     def MultiByCSS(self, css, msg=''):
         """Multi Get By CSS Shortcut"""
 
@@ -446,6 +489,30 @@ class Browser(SleepShortCuts):
             Msg("Stale element exception")
         except Exception as err:
             Msg(f"A generic error occurred while waiting or looking for a warning popup : {err}")
+
+        DbgExit(dbgblk, dbglb)
+
+        return items
+
+    def MultiByCSSIn(self, element, css):
+        """Find Elements within another element"""
+
+        dbgblk, dbglb = DbgNames(self.MultiByCSSIn)
+
+        DbgEnter(dbgblk, dbglb)
+
+        items = None
+
+        try:
+            items = element.find_elements(By.CSS_SELECTOR, css)
+        except TimeoutException:
+            DbgMsg("Timeout reached exception", dbglabel=dbglb)
+        except NoSuchElementException:
+            DbgMsg("No such element exception", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg("Stale element exception", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err}", dbglabel=dbglb)
 
         DbgExit(dbgblk, dbglb)
 
@@ -477,6 +544,30 @@ class Browser(SleepShortCuts):
 
         return item
 
+    def ByXPATHIn(self, element, xpath):
+        """Find Elements within another element"""
+
+        dbgblk, dbglb = DbgNames(self.ByXPATHIn)
+
+        DbgEnter(dbgblk, dbglb)
+
+        item = None
+
+        try:
+            item = element.find_element(By.XPATH, xpath)
+        except TimeoutException:
+            DbgMsg("Timeout reached exception", dbglabel=dbglb)
+        except NoSuchElementException:
+            DbgMsg("No such element exception", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg("Stale element exception", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return item
+
     def MultiByXPATH(self, xpath, msg=''):
         """Multi Get By XPATH Shortcut"""
 
@@ -498,6 +589,30 @@ class Browser(SleepShortCuts):
             Msg("Stale element exception")
         except Exception as err:
             Msg(f"A generic error occurred while waiting or looking for a warning popup : {err}")
+
+        DbgExit(dbgblk, dbglb)
+
+        return items
+
+    def MultiByXPATHIn(self, element, xpath):
+        """Find Elements within another element"""
+
+        dbgblk, dbglb = DbgNames(self.MultiByXPATHIn)
+
+        DbgEnter(dbgblk, dbglb)
+
+        items = None
+
+        try:
+            items = element.find_element(By.XPATH, xpath)
+        except TimeoutException:
+            DbgMsg("Timeout reached exception", dbglabel=dbglb)
+        except NoSuchElementException:
+            DbgMsg("No such element exception", dbglabel=dbglb)
+        except StaleElementReferenceException:
+            DbgMsg("Stale element exception", dbglabel=dbglb)
+        except Exception as err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err}", dbglabel=dbglb)
 
         DbgExit(dbgblk, dbglb)
 
@@ -532,6 +647,8 @@ class Browser(SleepShortCuts):
 
     def SwitchShadowRootFrame(self, name, pause=0):
         """Switch to Frame in Shadow Root"""
+
+        not self
 
         success = False
 
@@ -622,10 +739,10 @@ class Browser(SleepShortCuts):
 
         DbgEnter(dbgblk, dbglb)
 
-        options = self.DownloadOptions(downloadPath)
-        self.browser = webdriver.Chrome(options=options)
+        driver_options = self.DownloadOptions(downloadPath)
+        self.browser = webdriver.Chrome(options=driver_options)
 
-        self.SetupBrowser(url)
+        self.Get(url)
 
         DbgExit(dbgblk, dbglb)
 
@@ -649,7 +766,7 @@ class Browser(SleepShortCuts):
     def CloseDownloadsTab(self, downloads_tab, switch_to=None):
         """Close Downloads Tab"""
 
-        dbgblk, dbglb = DbgNames(self.CloseDownsTab)
+        dbgblk, dbglb = DbgNames(self.CloseDownloadsTab)
 
         DbgEnter(dbgblk, dbglb)
 
@@ -709,31 +826,32 @@ class Browser(SleepShortCuts):
 
         return downloadDict
 
-    def DownloadOptions(self, folder_path, with_caps=False):
+    @staticmethod
+    def DownloadOptions(folder_path, with_caps=False):
         """Set Browser Download Path"""
 
-        options = Options()
+        driver_options = Options()
 
         if with_caps:
             # options.set_capability("browserVersion", "latest")
             # options.set_capability("platformName", "linux")
-            options.set_capability("platformName", "Windows 10")
+            driver_options.set_capability("platformName", "Windows 10")
 
             # Folder path removed here for Grid system, can be added back in if path exists
-            options.add_experimental_option("prefs", {
+            driver_options.add_experimental_option("prefs", {
                 "download.prompt_for_download": False,
                 "download.directory_upgrade": True,
                 "safebrowsing.enabled": True})
         else:
-            options.add_experimental_option("prefs", {
+            driver_options.add_experimental_option("prefs", {
                 "download.default_directory": folder_path,
                 "download.prompt_for_download": False,
                 "download.directory_upgrade": True,
                 "safebrowsing.enabled": True})
 
-        options.add_argument('ignore-certificate-errors')
+        driver_options.add_argument('ignore-certificate-errors')
 
-        return options
+        return driver_options
 
     def BadCert(self):
         """Helper for Getting Past Bad Certs"""
@@ -749,17 +867,18 @@ class Browser(SleepShortCuts):
 
         self.Sleep()
 
-    def AttributeChanged(self, object, attribute, value):
-            """Check if attribute Changed"""
+    @staticmethod
+    def AttributeChanged(element, attribute, expected_value):
+        """Check if attribute Changed"""
 
-            flag = False
+        flag = False
 
-            current_value = object.get_attribute(attribute)
+        current_value = element.get_attribute(attribute)
 
-            if value != current_value:
-                flag = True
+        if expected_value != current_value:
+            flag = True
 
-            return flag
+        return flag
 
     def TagToAppear(self, selector_type, selector, timeout=5):
         """Wait for Tag to Appear"""
@@ -842,6 +961,10 @@ class Browser(SleepShortCuts):
     def WaitVisibleCSS(self, selector, timeout=2):
         """Wait until Element is Visible"""
 
+        dbgblk, dbglb = DbgNames(self.WaitVisibleCSS)
+
+        DbgEnter(dbgblk, dbglb)
+
         results = (True, None)
 
         try:
@@ -856,10 +979,16 @@ class Browser(SleepShortCuts):
             results = (False, err)
             DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
 
+        DbgExit(dbgblk, dbglb)
+
         return results
 
     def WaitClickableCSS(self, selector, timeout=2):
         """Wait for element to be Clickable"""
+
+        dbgblk, dbglb = DbgNames(self.WaitClickableCSS)
+
+        DbgEnter(dbgblk, dbglb)
 
         results = (True, None)
 
@@ -874,6 +1003,8 @@ class Browser(SleepShortCuts):
         except Exception as err:
             results = (False, err)
             DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
 
         return results
 
@@ -999,6 +1130,13 @@ class Browser(SleepShortCuts):
 
         ActionChains(self.browser).move_to_element(element).double_click().perform()
 
+    def ReadyState(self):
+        """Check if ReadyState Complete"""
+
+        response = self.browser.execute_script("return document.readyState")
+
+        return response == "complete"
+
 
 class ASCBrowser(Browser):
     """ACS Browser Class"""
@@ -1008,10 +1146,10 @@ class ASCBrowser(Browser):
     # mainFrame = "applicationFrame"
     mainFrame = 0
 
-    def __init__(self, url, download_path):
-        """Intitialize Instance"""
+    def __init__(self, start_url, download_path):
+        """Initialize Instance"""
 
-        super().__init__(url, download_path)
+        super().__init__(start_url, download_path)
 
         self.SetContexts()
 
@@ -1027,19 +1165,19 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-    def NewSessionWithLogin(self, url):
+    def NewSessionWithLogin(self, start_url, username, password):
         """New Session With Expected Login"""
 
         dbgblk, dbglb = DbgNames(self.NewSessionWithLogin)
 
         DbgEnter(dbgblk, dbglb)
 
-        options = self.DownloadOptions(downloadPath)
-        self.browser = webdriver.Chrome(options=options)
+        driver_options = self.DownloadOptions(downloadPath)
+        self.browser = webdriver.Chrome(options=driver_options)
 
-        self.SetupBrowser(url)
+        self.Get(start_url)
 
-        if self.SmartLogin():
+        if self.SmartLogin(username, password):
             DbgExit(dbgblk, dbglb)
 
             return self.browser
@@ -1066,7 +1204,7 @@ class ASCBrowser(Browser):
     def CloseDownloadsTab(self):
         """Close Downloads Tab"""
 
-        dbgblk, dbglb = DbgNames(self.CloseDownsTab)
+        dbgblk, dbglb = DbgNames(self.CloseDownloadsTab)
 
         DbgEnter(dbgblk, dbglb)
 
@@ -1188,13 +1326,6 @@ class ASCBrowser(Browser):
         self.browser.quit()
 
         sys.exit(-1)
-
-    def GetInterval(self, start, interval):
-        """Get End Time for Interval"""
-
-        end = start + interval - timedelta(seconds=1)
-
-        return end
 
     def BusySpinnerPresent(self, closeit=False):
         """Detect Busy Spinner"""
@@ -1330,7 +1461,8 @@ class ASCBrowser(Browser):
 
         return results
 
-    def BlankRow(self, recording):
+    @staticmethod
+    def BlankRow(recording):
         """Check For Blank Row"""
 
         blank = False
@@ -1340,6 +1472,34 @@ class ASCBrowser(Browser):
                 break
         else:
             blank = True
+
+        return blank
+
+    def BlankRowOrLine(self, row):
+        """Blank Row or Line"""
+
+        blank = False
+
+        try:
+            cells = self.MultiByCSSIn(row, "td")
+
+            if cells is not None:
+                values = [str(cell.text) for cell in cells]
+
+                for value in values:
+                    if value is not None and value != "":
+                        break
+                else:
+                    blank = True
+            else:
+                if DebugMode():
+                    DbgMsg("row appears to be empty for some reason", dbglabel=informational)
+                    breakpoint()
+
+        except StaleElementReferenceException as err_ser:
+            DbgMsg("Stale element reference, not sure why", dbglabel=informational)
+        except Exception as err:
+            ErrMsg(err, "Not sure what happened here while trying to check row for being empty")
 
         return blank
 
@@ -1382,22 +1542,18 @@ class ASCBrowser(Browser):
         retry_count = 0
         retry = True
         last_rowkey = None
+        records = list()
 
         try:
             Event("Entering try-while block")
             while retry:
                 Event("Getting rows")
 
+                count = 1
+
                 rows = self.GetRows()
 
-                records = list()
-
-                Event(f"Retrieved {len(rows)}")
-
-                count = 1
                 for row in rows:
-                    Event("Creating RecordingRecord from row")
-
                     recording = RecordingRecord(row)
 
                     Event("Checking for blank row")
@@ -1407,11 +1563,12 @@ class ASCBrowser(Browser):
                         continue
 
                     if DebugMode() and (recording.data is None or recording.rowkey is None):
-                        DbgMsg("Recording.data or recording.rowkey is none, why? PrintEvents() to see event list", dbglabel="Informational")
+                        DbgMsg("Recording.data or recording.rowkey is none, why? PrintEvents() to see event list", dbglabel=informational)
                         breakpoint()
 
                     last_rowkey = recording.rowkey
                     Event(f"Processing {last_rowkey}")
+                    loaded = None
 
                     try:
                         Event("Checking for blanks, ie. no search results")
@@ -1419,7 +1576,7 @@ class ASCBrowser(Browser):
                         retry = False
                         Event("Checking for no search results seems to have succeeded")
                     except Exception as err:
-                        Msg(f"Checking for 'Loaded' column seems to have failed : {err}", dbglabel=dbglb)
+                        Msg(f"Checking for 'Loaded' column seems to have failed : {err}")
                         retry = True if retry_count < retries else False
                         retry_count += 1
 
@@ -1517,10 +1674,9 @@ class ASCBrowser(Browser):
                             elif progress.text == "":
                                 try:
                                     # Last ditch chance to complete d/l
-                                    okBtn = self.ByCSS(btnOkCSS)
+                                    okBtn = self.ByCSS(btnOkCss)
 
-                                    #obBtn.click()
-                                    self.ClickAction(obBtn)
+                                    self.ClickAction(okBtn)
                                     DbgMsg("Came across case where save dialog was up and not stalled")
                                 except Exception as err:
                                     DbgMsg("Save dialog stalled or not, can't tell", dbglabel=dbglb)
@@ -1628,14 +1784,34 @@ class ASCBrowser(Browser):
         DbgMsg(f"Attempting to activate {rowkey}", dbglabel=dbglb)
 
         success = True
+        needs_refresh = False
 
         conditions = {"rowkey": ""}
 
         try:
-            if self.PopoutPresent(2):
+            if self.PopoutPresent(3):
                 self.ClosePopOut(self.mainFrame)
 
             self.DoubleClickActionObj(row)
+
+            self.Second()
+
+            time_check = datetime.now()
+
+            if self.PopoutPresent(60):
+                self.ClosePopOut(self.mainFrame)
+
+                duration = datetime.now() - time_check
+
+                if duration.seconds > 5:
+                    # we have a real problem here.
+                    needs_refresh = True
+                    success = False
+
+                    return success, needs_refresh
+                else:
+                    self.Second()
+
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
 
@@ -1660,7 +1836,7 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-        return success
+        return success, needs_refresh
 
     @Eventing("Starting Search")
     def Search(self, startDate, endDate):
@@ -1716,6 +1892,9 @@ class ASCBrowser(Browser):
 
             spinner = None
 
+            closeAnchorCss = "div[id='conversationObjectView:searchDialog'] > div > a[class='ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all']"
+            closeAnchor = self.ByCSS(closeAnchorCss)
+
             try:
                 Event(f"Beginning Search between {startDate} and {endDate}")
 
@@ -1733,9 +1912,6 @@ class ASCBrowser(Browser):
 
                 spinnerCss = "div[id='statusDialogId']"
                 spinner = self.ByCSS(spinnerCss)
-
-                closeAnchorCss = "div[id='conversationObjectView:searchDialog'] > div > a[class='ui-dialog-titlebar-icon ui-dialog-titlebar-close ui-corner-all']"
-                closeAnchor = self.ByCSS(closeAnchorCss)
 
                 startInput.clear()
                 startInput.send_keys(startDate.strftime("%m/%d/%Y %I:%M:%S %p"))
@@ -1756,7 +1932,7 @@ class ASCBrowser(Browser):
 
             startSearch_Timestamp = datetime.now()
 
-            flag = self.WaitUntilTrue(3600, AttributeChanged, spinner, "aria-hidden", "false")
+            flag = self.WaitUntilTrue(3600, self.AttributeChanged, spinner, "aria-hidden", "false")
 
             searchDuration = datetime.now() - startSearch_Timestamp
 
@@ -1825,12 +2001,14 @@ class ASCBrowser(Browser):
 
         return downloadDict
 
-    def BeginDownload(self, vrec=None):
+    def BeginDownload(self):
         """Begin Download"""
 
         dbgblk, dbglb = DbgNames(self.BeginDownload)
 
         DbgEnter(dbgblk, dbglb)
+
+        reason = "no reason given"
 
         def audioCheckboxTest(*args, **kwargs):
             """Internal Test for Checkbox"""
@@ -1841,8 +2019,19 @@ class ASCBrowser(Browser):
 
             ready = False
 
-            if checkbox.is_displayed() and checkbox.is_enabled():
-                ready = True
+            try:
+                if checkbox.is_displayed() and checkbox.is_enabled():
+                    ready = True
+            except Exception as err:
+                ready = False
+
+                if not checkbox.is_displayed():
+                    reason = "not displayed"
+                elif not checkbox.is_enabled():
+                    reason = "not enabled"
+
+                if DebugMode():
+                    DbgMsg(f"audioInput is {reason}... what gives", dbglabel=informational)
 
             return ready
 
@@ -1853,8 +2042,6 @@ class ASCBrowser(Browser):
         mediaSrcsChat = "li[class='mediasources_chat'] > label > input"
         okBtnCss = "button[class='asc_jbox_ok_button']"
         cancelBtnCss = "button[class='asc_jbox_cancel_button']"
-
-        self.ClosePopOut()
 
         saveBtn = self.ByCSS(saveCss)
         self.ClickActionObj(saveBtn)
@@ -1873,17 +2060,19 @@ class ASCBrowser(Browser):
         audioEnabled = False
         count = 0
 
+        # Wait 3 seconds to see if audioInput box is visible
+        results = self.WaitUntilTrue(3, audioCheckboxTest, audioInput)
+
         try:
-            aiObj = edom(audioInput)
-
-            results = self.WaitUntilTrue(3, audioCheckboxTest, audioInput)
-
             if audioInputDis is None and audioInput is not None and audioCheckboxTest(audioInput):
+
                 audioEnabled = True
 
                 self.ClickActionObj(audioInput)
 
                 self.Half()
+
+                aiObj = edom(audioInput)
 
                 while not aiObj.get_prop("checked", False) and count < 3:
                     self.Half()
@@ -1907,22 +2096,22 @@ class ASCBrowser(Browser):
 
                 self.ClickActionObj(okBtn)
             else:
-                DbgMsg("Cancelling download because audio checkbox is not checked", dbglabel=dbglb)
+                reason = "not checked"
 
-                if DebugMode():
-                    DbgMsg("Audio checkbox does not appear to be checked, look for spinner", dbglabel=dbglb)
-                    breakpoint()
+                DbgMsg("Cancelling download because audio checkbox is not checked, enabled or invisible", dbglabel=dbglb)
 
                 success = False
                 self.Half()
                 self.ClickActionObj(cancelBtn)
 
             self.Half()
-        except ElementClickInterceptedException:
+        except ElementClickInterceptedException as err_eci:
             success = False
 
             if DebugMode():
                 DbgMsg("audio checkbox unable to be clicked, likely disabled by CSS", dbglabel=dbglb)
+        except TimeoutException as err_to:
+            ErrMsg(err_to, "Bummer, it seems the checkbox is not checked")
         except Exception as err:
             ErrMsg(err, "Click to download failed")
             audioEnabled = False
@@ -1930,7 +2119,7 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-        return success
+        return success, reason
 
     def Download(self, voice_recording, frame_name=None, rows=None):
         """Download Recording"""
@@ -1944,6 +2133,7 @@ class ASCBrowser(Browser):
         recording = voice_recording.recording
 
         success = False
+        needs_refresh = False
         rowkey = recording.rowkey
         row = None
 
@@ -1952,13 +2142,15 @@ class ASCBrowser(Browser):
         else:
             last_rowkey = lastprocessed.recording.rowkey
 
+        lastprocessed = voice_recording
+
         conditions = {"rowkey": ""}
 
         if frame_name is not None:
             self.SwitchFrame(frame_name)
 
         try:
-            if self.PopoutPresent(timeout=3):
+            if self.PopoutPresent(3):
                 self.ClosePopOut(frame_name)
 
             self.Half()
@@ -1967,7 +2159,7 @@ class ASCBrowser(Browser):
             row = self.ByXPATH(rowXPath)
 
             # Activate Row
-            success = self.ActivateRow(row, rowkey)
+            success, needs_refresh = self.ActivateRow(row, rowkey)
 
             self.Half()
 
@@ -1977,15 +2169,17 @@ class ASCBrowser(Browser):
 
                 DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel="Informational")
 
-                if not self.BeginDownload(vrec=voice_recording):
-                    global_temp = ("save failed", rowkey)
+                success, reason = self.BeginDownload()
+
+                if not success:
+                    global_temp = (f"save failed : {reason}", rowkey)
 
                     success = False
                     voice_recording.AddToBad()
 
-                    recording.data["Archived"] = "Audio Unavailable/Not Archived"
+                    recording.data["Archived"] = f"Audio Unavailable/Not Archived/{reason}"
                     AppendRows(catalogFilename, recording.data)
-                    Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
+                    Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded because, {reason}")
                 else:
                     self.Half()
 
@@ -1995,16 +2189,20 @@ class ASCBrowser(Browser):
                         lastprocessed.AddToBad()
                         lastprocessed.progress = 100
 
+                        Msg(f"Record {rowkey} for {recording.data['Start Time']} was not downloaded because it stalled")
+
                         return success
             else:
-                global_temp = ("activation failed", rowkey)
-                Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
+                if not needs_refresh:
+                    global_temp = ("activation failed", rowkey)
+                    Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
 
-                voice_recording.AddToBad()
+                    voice_recording.AddToBad()
 
-                recording.data["Archived"] = "Damaged/Not Archived"
-                recording.data["Expanded"] = "Warning received before download"
-                AppendRows(catalogFilename, recording.data)
+                    recording.data["Archived"] = "Damaged/Not Archived"
+                    recording.data["Expanded"] = "Warning received before download"
+                    AppendRows(catalogFilename, recording.data)
+
         except Exception as err:
             # check rowkey and list of rows
             Msg(f"Could not activate row with rowkey {rowkey} : {err}")
@@ -2021,9 +2219,10 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-        return success
+        return success, needs_refresh
 
-    def CompleteBadRecording(self, download):
+    @staticmethod
+    def CompleteBadRecording(download):
         """Complete a bad download"""
 
         recording = download.recording
@@ -2040,7 +2239,8 @@ class ASCBrowser(Browser):
         if not download.IsBad():
             download.AddToBad()
 
-    def SaveMetaInfo(self, download):
+    @staticmethod
+    def SaveMetaInfo(download):
         """Save Meta Info"""
 
         myname, mypath = download.MyPath()
@@ -2081,6 +2281,8 @@ class ASCBrowser(Browser):
                     recording.data["Archived"] = "Yes/Downloaded"
 
                     os.remove(myzipfile)
+
+                    DbgMsg(f"Download Completed {recording.rowkey} / {download.ConversationID()} for {download.Timestamp()}", dbglabel=informational)
                 else:
                     self.CompleteBadRecording(download)
 
@@ -2093,7 +2295,7 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-    def CheckActiveDownloads(self, activeDownloads, downloadCount, sleep_time=2, pause=1):
+    def CheckActiveDownloads(self, activeDownloads, downloadCount, sleep_time=2.0, pause=1.0):
         """Check (and/or Wait for) Active Downloads"""
 
         dbgblk, dbglb = DbgNames(self.CheckActiveDownloads)
@@ -2121,6 +2323,46 @@ class ASCBrowser(Browser):
 
         return completedCount
 
+    def SearchPageForward(self, pages=1):
+        """Page Forward in Search Results"""
+
+        next_class_disabled = "ui-paginator-next ui-state-default ui-corner-all ui-state-disabled"
+        next_button_disabled_css = f"a[class='{next_class_disabled}']"
+        next_button_css = "a[aria-label='Next Page']"
+
+        page_count = 0
+
+        moved_forward = True
+
+        while page_count < pages and moved_forward:
+            next_btn = self.ByCSS(next_button_css)
+
+            if next_btn.get_attribute("class") != next_class_disabled:
+                # More pages of items for this search to download
+                self.ClickActionObj(next_btn)
+
+                self.Sleep(4)
+
+                adjustment = 0
+
+                while not self.ReadyState():
+                    adjustment += 0.5
+                    self.Sleep(1)
+
+                retries = 0
+
+                while self.BusySpinnerPresent() and retries < 10:
+                    adjustment += 0.5
+                    self.Quarter()
+
+                    retries += 1
+
+                self.Sleep(2 + adjustment)
+            else:
+                moved_forward = False
+
+        return moved_forward
+
     def BatchDownloading(self, interval):
         """Download Items"""
 
@@ -2142,12 +2384,6 @@ class ASCBrowser(Browser):
 
         self.SwitchFrame(self.mainFrame, 3)
 
-        nextClassDisabled = "ui-paginator-next ui-state-default ui-corner-all ui-state-disabled"
-        nextButtonDisabledCss = f"a[class='{nextClassDisabled}']"
-        nextButtonCss = "a[aria-label='Next Page']"
-
-        nextBtn = self.ByCSS(nextButtonCss)
-
         # Search from start date to end date in increments of 5 downloads per until all files downloaded
         startDate = officialStart
         searchInterval = interval
@@ -2157,10 +2393,17 @@ class ASCBrowser(Browser):
 
         DbgMsg(f"Starting run between {startDate} and {officialEnd}", dbglabel=dbglb)
 
+        needs_refresh = False
+
         while startDate < officialEnd:
-            endDate = startDate + searchInterval - correction
+            if not needs_refresh:
+                endDate = startDate + searchInterval - correction
+            else:
+                needs_refresh = False
 
             self.MainContext()
+
+            pages_forward = 0
 
             # Conduct a search between the given dates
             self.Search(startDate, endDate)
@@ -2170,17 +2413,27 @@ class ASCBrowser(Browser):
             paginationInfo = self.GetPageCount()
 
             # Now, download the results X at a time and remember to page until you can't page anymore
-            while True:
+            while not needs_refresh:
                 self.MainContext()
 
-                # Get Items on current page
-                data = self.GetData(self.mainFrame)
+                recordings = list()
+
+                retries = 0
+
+                # Get Items on current page with retry
+                while len(recordings) == 0 and retries < 3:
+                    recordings = self.GetData(self.mainFrame)
+
+                    if len(recordings) == 0:
+                        DbgMsg(f"Retrying to get rows from current search page : {retries}", dbglabel=informational)
+                        retries += 1
+                        self.Quarter()
 
                 skipped = 0
                 not_skipped = 0
                 interval_errored = 0
 
-                for recording in data:
+                for recording in recordings:
                     # Check recording to see if it's already downloaded or discardable in some other way
 
                     vrec = VoiceDownload(recording, self.downloadPath)
@@ -2193,11 +2446,15 @@ class ASCBrowser(Browser):
                         not_skipped += 1
 
                         # Only allow for X number of simultaneousDownloads
-                        if self.Download(vrec, self.mainFrame, data):
+                        success, needs_refresh = self.Download(vrec, self.mainFrame, recordings)
+
+                        if success:
                             success = vrec.GetDownloadInfo(self)
 
                             if success:
                                 activeDownloads.append(vrec)
+                        elif needs_refresh:
+                            break
                         else:
                             errored += 1
                             interval_errored += 1
@@ -2208,35 +2465,40 @@ class ASCBrowser(Browser):
                         skipped += 1
                         continue
 
-                    completed += self.CheckActiveDownloads(activeDownloads, 0, 1.25)
+                    completed += self.CheckActiveDownloads(activeDownloads, simultaneousDownloads, 1.25)
 
-                DbgMsg(f"Not skipped - {not_skipped}, Skipped - {skipped}, errored {interval_errored}", dbglabel="Informational")
+                DbgMsg(f"Not skipped - {not_skipped}, Skipped - {skipped}, errored {interval_errored}, requires refresh : {needs_refresh}", dbglabel=informational)
 
-                del data
+                del recordings
 
-                data = None
+                recordings = None
 
-                nextBtn = self.ByCSS(nextButtonCss)
+                if not needs_refresh:
+                    if self.SearchPageForward():
+                        pages_forward += 1
+                    else:
+                        if len(activeDownloads) > 0:
+                            completed += self.CheckActiveDownloads(activeDownloads, 0, 1)
 
-                if nextBtn.get_attribute("class") != nextClassDisabled:
-                    # More pages of items for this search to download
-                    self.ClickActionObj(nextBtn)
-                    self.Sleep(2)
-                else:
-                    if len(activeDownloads) > 0:
-                        completed += self.CheckActiveDownloads(activeDownloads, 0, 1)
+                        present = self.BusySpinnerPresent(True)
 
-                    present = self.BusySpinnerPresent(True)
+                        if present:
+                            DbgMsg("Busy Spinner is present, not good", dbglabel=dbglb)
 
-                    if present:
-                        DbgMsg("Busy Spinner is present, not good", dbglabel=dbglb)
-
-                    break
+                        break
 
             self.Sleep(5.0)
             DbgMsg("Refreshing browser instance", dbglabel=dbglb)
             self.Refresh()
-            self.Sleep(8.0)
+            self.Sleep(1)
+
+            while not self.ReadyState():
+                self.Half()
+
+            if needs_refresh:
+                self.SearchPageForward(pages_forward)
+                # Need this to prevent interval from moving forward
+                continue
 
             startDate = endDate + correction
             endDate = (startDate + searchInterval - correction)
@@ -2350,18 +2612,16 @@ class RecordingRecord:
         self.row = row
 
         try:
-            self.cells = self.row.find_elements(By.CSS_SELECTOR, "td")
+            self.cells = row.find_elements(By.CSS_SELECTOR, "td")
             data_from_cells = [str(cell.text) for cell in self.cells]
             self.data = dict(zip(header, data_from_cells))
             self.rowkey = self.data["Conversation ID"]
+        except StaleElementReferenceException as err_ser:
+            DbgMsg("Stale element exception", dbglabel=informational)
         except Exception as err:
-            DbgMsg("Failed to find TD that contains the cells with information", dbglabel=dbglb)
-
-            if DebugMode():
-                breakpoint()
+            DbgMsg("Failed to find TD that contains the cells with information", dbglabel=informational)
 
         DbgExit(dbgblk, dbglb)
-
 
     def Print(self):
         print(f"Rowkey\t: {self.rowkey}")
@@ -2370,205 +2630,248 @@ class RecordingRecord:
         print(f"Data\t: {self.data}")
 
 
-class eDOM:
-    """DOM Helper for WebElement"""
+class VoiceDownload:
+    """voice Download Class"""
 
-    Element = None
+    downloadPath = None
+    recording = None
+    filename = None
+    progress = 0
+    is_bad = False
 
-    def __init__(self, webElement):
-        """Init Instance"""
+    def __init__(self, recording, download_path):
+        """Initialize Instance"""
 
-        self.Element = webElement
+        self.recording = recording
+        self.downloadPath = download_path
 
-    def __getitem__(self, key):
-        """Get Item By Key"""
+    def GetDownloadInfo(self, browser, sleep_time=3):
+        """Get Download Info"""
 
-        # No try-except, we want this to fail technically
-        result = self.Element.get_attribute(key)
+        dbgblk, dbglb = DbgNames(self.GetDownloadInfo)
 
-        return result
+        DbgEnter(dbgblk, dbglb)
 
-    def keys(self):
-        """Return A list of Keys"""
+        DbgMsg(f"Entering {dbgblk}", dbglabel=dbglb)
 
-        standard_attributes = [
-            "id",
-            "name",
-            "class",
-            "style",
-            "aria-class",
-            "aria-role",
-            "src",
-            "alt",
-            "rel",
-            "href",
-            "text",
-            "value",
-            "width",
-            "height",
-            "lang",
-            "title",
-            "accept",
-            "accept-charset",
-            "accesskey",
-            "action",
-            "align",
-            "allow",
-            "async",
-            "autocapitalize",
-            "autoplay",
-            "background",
-            "bgcolor",
-            "border",
-            "buffered",
-            "capture",
-            "charset",
-            "checked",
-            "cite",
-            "color",
-            "cols",
-            "colspan",
-            "content",
-            "contenteditable",
-            "controls",
-            "coords",
-            "crossorigin",
-            "csp",
-            "data",
-            "datetime",
-            "decoding",
-            "default",
-            "defer",
-            "dir",
-            "dirname",
-            "disabled",
-            "download",
-            "draggable",
-            "enctype",
-            "enterkeyhint",
-            "for",
-            "form",
-            "formaction",
-            "formenctype",
-            "formmethod",
-            "formnovalidate",
-            "formtarget",
-            "headers",
-            "hidden",
-            "high",
-            "hreflang",
-            "http-equiv",
-            "integrity",
-            "intrinsicsize",
-            "inputmode",
-            "ismap",
-            "itemprop",
-            "kind",
-            "label",
-            "language",
-            "loading",
-            "list",
-            "loop",
-            "low",
-            "manifest",
-            "max",
-            "maxlength",
-            "minlength",
-            "media",
-            "method",
-            "min",
-            "multiple",
-            "muted",
-            "novalidate",
-            "open",
-            "optimum",
-            "pattern",
-            "ping",
-            "placeholder",
-            "playsinline",
-            "poster",
-            "preload",
-            "readonly",
-            "required",
-            "reversed",
-            "role",
-            "rows",
-            "rowspan",
-            "sandbox",
-            "scope",
-            "scoped",
-            "selected",
-            "shape",
-            "size",
-            "sizes",
-            "slot",
-            "span",
-            "spellcheck",
-            "srcdoc",
-            "srclang",
-            "srcset",
-            "start",
-            "step",
-            "summary",
-            "tabindex",
-            "target",
-            "translate",
-            "type",
-            "usemap",
-            "wrap"
-        ]
+        success = True
 
-        attributes_present = list()
+        downloads = browser.GetDownloads(sleep_time)
 
-        for attr in standard_attributes:
-            try:
-                value = self.Element.get_attribute(attr)
+        if len(downloads) == 0:
+            success = False
 
-                if value is not None:
-                    attributes_present.append(attr)
-            except:
-                pass
+        topitem = None
 
-        return attributes_present
+        for filename, progress in downloads.items():
+            if topitem is None and self.filename is None:
+                self.filename = filename
+                self.progress = int(progress)
+                topitem = (self.filename, self.progress)
 
-    def items(self):
-        """Get Key-Value Pairs"""
+                break
 
-        item_list = list()
+        browser.MainContext()
 
-        attrs = self.keys()
+        DbgExit(dbgblk, dbglb)
 
-        for attr in attrs:
-            value = self.Element.get_attribute(attr)
+        return success
 
-            item_list.append((attr, value))
+    def GetDownloadProgress(self, browser, sleep_time=3):
+        """Update Download Progress"""
 
-        return item_list
+        dbgblk, dbglb = DbgNames(self.GetDownloadProgress)
 
-    def values(self):
-        """Get values of present Attributes"""
+        DbgEnter(dbgblk, dbglb)
 
-        attrs = self.keys()
+        downloads = browser.GetDownloads(sleep_time)
 
-        vals = dict()
+        for filename, progress in downloads.items():
+            if filename == self.filename:
+                self.progress = int(progress)
 
-        for attr in attrs:
-            vals[attr] = self.ELement.get_attribute(attr)
+                break
 
-        return vals
+        browser.MainContext()
 
-    def get(self, attr_name, altvalue=None):
-        result = altvalue
+        DbgExit(dbgblk, dbglb)
 
-        try:
-            result = self.Element.get_attribute(attr_name)
+        return self.progress
 
-            if result == None:
-                result = altvalue
-        except:
-            result = None
+    def ConversationID(self):
+        """Get Conversation ID"""
 
-        return result
+        return self.recording.data["Conversation ID"]
+
+    def TimestampStr(self):
+        """Get Timestamp String"""
+
+        return self.recording.data["Start Time"]
+
+    def Timestamp(self):
+        """Get Time Stamp"""
+
+        timestamp = self.recording.data["Start Time"]
+
+        mytimestamp = datetime.strptime(timestamp, "%m/%d/%Y %I:%M:%S %p")
+
+        return mytimestamp
+
+    def CalledPartyName(self):
+        """Get the Called Party Name"""
+
+        return self.recording.data["Called Party Name"]
+
+    def DurationStr(self):
+        """Get Duration String"""
+
+        return self.recording.data["Duration"]
+
+    def Duration(self):
+        """Get Duration (as timedelta)"""
+
+        strDuration = self.recording.data["Duration"]
+
+        quads = strDuration.split(":")
+
+        hours = int(quads[0])
+        minutes = int(quads[1])
+        seconds = int(quads[2])
+        ms = int(quads[3])
+
+        delta = timedelta(seconds=seconds, milliseconds=ms, minutes=minutes, hours=hours)
+
+        return delta
+
+    def ConnectedNumber(self):
+        """Get number connected to"""
+
+        return self.recording.data["1st-Connected Phone Number"]
+
+    def ConnectedName(self):
+        """Get Connected Name aka 1-st Connected Name"""
+
+        return self.recording.data["1st-Connected Name"]
+
+    def CalledNumber(self):
+        """Get Called Number"""
+
+        return self.recording.data["Called Party Phone Number"]
+
+    def CallingNumber(self):
+        """Get Calling Number"""
+
+        return self.recording.data["Calling Party Phone Number"]
+
+    def CallingPartyName(self):
+        """Get Calling Party Name"""
+
+        return self.recording.data["Calling Party Name"]
+
+    def MyPath(self):
+        """Construct My Path and Filename"""
+
+        parentFolderSpec = "{:%Y%m%d}"
+        fmtspec = "{:%Y%m%d%H%M%S}"
+        conversationID = self.ConversationID()
+        convoDirection = self.recording.data["Conversation Direction"]
+        timestamp = self.Timestamp()
+        parentFolder = parentFolderSpec.format(timestamp)
+        timestampfldr = fmtspec.format(timestamp)
+        calledpartyname = self.CalledPartyName()
+
+        myname = f"{conversationID}.wav"
+
+        # path /backup/called-party/timestamp/conversationID
+
+        if convoDirection == "Unknown":
+            calledpartyname = "radio"
+
+        mypath = os.path.join(self.downloadPath, parentFolder, timestampfldr, conversationID)
+
+        return myname, mypath
+
+    def Exists(self):
+        """Check to See if Voice Recording Archive Exists"""
+
+        exists = False
+
+        myname, mypath = self.MyPath()
+
+        myfile = os.path.join(mypath, myname)
+
+        if os.path.exists(myfile):
+            exists = True
+
+        return exists
+
+    def AddToBad(self):
+        """Add to Bad List"""
+
+        self.is_bad = True
+
+        if not self.InBad():
+            with open(badRecordings, "at", newline='') as bad:
+                writer = csv.writer(bad)
+
+                row = [ self.ConversationID(), self.Timestamp() ]
+
+                writer.writerow(row)
+
+    def InBad(self):
+        """Check Bad List"""
+
+        convoid = self.ConversationID()
+        is_bad = False
+
+        if os.path.exists(badRecordings):
+            with open(badRecordings, "rt", newline='') as bad:
+                reader = csv.reader(bad)
+                for row in reader:
+                    convo_rec, timestamp = row
+                    if convo_rec == convoid:
+                        is_bad = True
+                        break
+
+        return is_bad
+
+    def IsBad(self):
+        """Return Is Bad Flag"""
+
+        return self. is_bad
+
+    def SelectForDownload(self, ignore_bad=False):
+        """Select For Download via Attributes"""
+
+        # Was going to select for attributes, however, higher-ups said back it all up
+        # Thus, we only need to see if has been already downloaded.
+        download = True
+
+        exists = self.Exists()
+
+        if exists:
+            # If it exists, there may be some circumstances where we want to download it again
+            myname, mypath = self.MyPath()
+
+            flag = os.path.join(mypath, "missing.txt")
+
+            if os.path.exists(flag):
+                # Leaving this like this for the moment
+                download = False
+            else:
+                download = False
+        else:
+            if not ignore_bad and self.InBad():
+                download = False
+
+        return download
+
+    def Print(self):
+        print(f"\t: {self.downloadPath}")
+        print(f"\t: {self.filename}")
+        print(f"\t: {self.progress}")
+        print(f"\t: {self.is_bad}")
+        self.recording.Print()
 
 
 class edom(object):
@@ -2796,253 +3099,6 @@ class edom(object):
         return result
 
 
-class VoiceDownload:
-    """voice Download Class"""
-
-    downloadPath = None
-    recording = None
-    filename = None
-    progress = 0
-    is_bad = False
-
-    def __init__(self, recording, downloadPath):
-        """Initialize Instance"""
-
-        self.recording = recording
-        self.downloadPath = downloadPath
-
-    def GetDownloadInfo(self, browser, sleep_time=3):
-        """Get Download Info"""
-
-        dbgblk, dbglb = DbgNames(self.GetDownloadInfo)
-
-        DbgEnter(dbgblk, dbglb)
-
-        DbgMsg(f"Entering {dbgblk}", dbglabel=dbglb)
-
-        success = True
-
-        downloads = browser.GetDownloads(sleep_time)
-
-        if len(downloads) == 0:
-            success = False
-
-        topitem = None
-
-        for filename, progress in downloads.items():
-            if topitem is None and self.filename is None:
-                self.filename = filename
-                self.progress = int(progress)
-                topitem = (self.filename, self.progress)
-
-                break
-
-        browser.MainContext()
-
-        DbgExit(dbgblk, dbglb)
-
-        return success
-
-    def GetDownloadProgress(self, browser, sleep_time=3):
-        """Update Download Progress"""
-
-        dbgblk, dbglb = DbgNames(self.GetDownloadProgress)
-
-        DbgEnter(dbgblk, dbglb)
-
-        downloads = browser.GetDownloads(sleep_time)
-
-        for filename, progress in downloads.items():
-            if filename == self.filename:
-                self.progress = int(progress)
-
-                break
-
-        browser.MainContext()
-
-        DbgExit(dbgblk, dbglb)
-
-        return self.progress
-
-    def ConversationID(self):
-        """Get Conversation ID"""
-
-        return self.recording.data["Conversation ID"]
-
-    def TimestampStr(self):
-        """Get Timestamp String"""
-
-        return self.recording.data["Start Time"]
-
-    def Timestamp(self):
-        """Get Time Stamp"""
-
-        timestamp = self.recording.data["Start Time"]
-
-        mytimestamp = datetime.strptime(timestamp, "%m/%d/%Y %I:%M:%S %p")
-
-        return mytimestamp
-
-    def CalledPartyName(self):
-        """Get the Called Party Name"""
-
-        return self.recording.data["Called Party Name"]
-
-    def DurationStr(self):
-        """Get Duration String"""
-
-        return self.recording.data["Duration"]
-
-    def Duration(self):
-        """Get Duration (as timedelta)"""
-
-        strDuration = self.recording.data["Duration"]
-
-        quads = strDuration.split(":")
-
-        hours = int(quads[0])
-        minutes = int(quads[1])
-        seconds = int(quads[2])
-        ms = int(quads[3])
-
-        delta = timedelta(seconds=seconds, milliseconds=ms, minutes=minutes, hours=hours)
-
-        return delta
-
-    def ConnectedNumber(self):
-        """Get number connected to"""
-
-        return self.recording.data["1st-Connected Phone Number"]
-
-    def ConnectedName(self):
-        """Get Connected Name aka 1-st Connected Name"""
-
-        return self.recording.data["1st-Connected Name"]
-
-    def CalledNumber(self):
-        """Get Called Number"""
-
-        return self.recording.data["Called Party Phone Number"]
-
-    def CallingNumber(self):
-        """Get Calling Number"""
-
-        return self.recording.data["Calling Party Phone Number"]
-
-    def CalledPartyName(self):
-        """Get Called Party Name"""
-
-        return self.recording.data["Called Party Name"]
-
-    def CallingPartyName(self):
-        """Get Calling Party Name"""
-
-        return self.recording.data["Calling Party Name"]
-
-    def MyPath(self):
-        """Construct My Path and Filename"""
-
-        parentFolderSpec = "{:%Y%m%d}"
-        fmtspec = "{:%Y%m%d%H%M%S}"
-        conversationID = self.ConversationID()
-        convoDirection = self.recording.data["Conversation Direction"]
-        timestamp = self.Timestamp()
-        parentFolder = parentFolderSpec.format(timestamp)
-        timestampfldr = fmtspec.format(timestamp)
-        calledpartyname = self.CalledPartyName()
-
-        myname = f"{conversationID}.wav"
-
-        # path /backup/called-party/timestamp/conversationID
-
-        if convoDirection == "Unknown":
-            calledpartyname = "radio"
-
-        mypath = os.path.join(self.downloadPath, parentFolder, timestampfldr, conversationID)
-
-        return myname, mypath
-
-    def Exists(self):
-        """Check to See if Voice Recording Archive Exists"""
-
-        exists = False
-
-        myname, mypath = self.MyPath()
-
-        myfile = os.path.join(mypath, myname)
-
-        if os.path.exists(myfile):
-            exists = True
-
-        return exists
-
-    def AddToBad(self):
-        """Add to Bad List"""
-
-        self.is_bad = True
-
-        if not self.InBad():
-            with open(badRecordings, "at", newline='') as bad:
-                writer = csv.writer(bad)
-
-                row = [ self.ConversationID(), self.Timestamp() ]
-
-                writer.writerow(row)
-
-    def InBad(self):
-        """Check Bad List"""
-
-        convoid = self.ConversationID()
-        is_bad = False
-
-        if os.path.exists(badRecordings):
-            with open(badRecordings, "rt", newline='') as bad:
-                reader = csv.reader(bad)
-                for row in reader:
-                    convo_rec, timestamp = row
-                    if convo_rec == convoid:
-                        is_bad = True
-                        break
-
-        return is_bad
-
-    def IsBad(self):
-        """Return Is Bad Flag"""
-
-        return self. is_bad
-
-    def SelectForDownload(self):
-        """Select For Download via Attributes"""
-
-        # Was going to select for attributes, however, higher-ups said back it all up
-        # Thus, we only need to see if has been already downloaded.
-        download = True
-
-        exists = self.Exists()
-
-        if exists:
-            myname, mypath = self.MyPath()
-
-            flag = os.path.join(mypath, "missing.txt")
-
-            if os.path.exists(flag):
-                download = False
-            else:
-                download = False
-        else:
-            if self.InBad():
-                download = False
-
-        return download
-
-    def Print(self):
-        print(f"\t: {self.downloadPath}")
-        print(f"\t: {self.filename}")
-        print(f"\t: {self.progress}")
-        print(f"\t: {self.is_bad}")
-        self.recording.Print()
-
-
 # Variables
 
 dynBreak = DynamicBreakpoint()
@@ -3059,6 +3115,7 @@ mainFrame = "applicationFrame"
 
 # Debugging Stuff
 
+
 def BreakWhen(conditions, **kwargs):
     """Break When Conditions Met"""
 
@@ -3074,61 +3131,6 @@ def BreakWhen(conditions, **kwargs):
             break
 
     return conditions_met
-
-
-"""
-def read_single_keypress():
-    Waits for a single keypress on stdin.
-
-    This is a silly function to call if you need to do it a lot because it has
-    to store stdin's current setup, setup stdin for reading single keystrokes
-    then read the single keystroke then revert stdin back after reading the
-    keystroke.
-
-    Returns a tuple of characters of the key that was pressed - on Linux, 
-    pressing keys like up arrow results in a sequence of characters. Returns 
-    ('\x03',) on KeyboardInterrupt which can happen when a signal gets
-    handled.
-
-    import termios, fcntl, sys, os
-    fd = sys.stdin.fileno()
-    # save old state
-    flags_save = fcntl.fcntl(fd, fcntl.F_GETFL)
-    attrs_save = termios.tcgetattr(fd)
-    # make raw - the way to do this comes from the termios(3) man page.
-    attrs = list(attrs_save) # copy the stored version to update
-    # iflag
-    attrs[0] &= ~(termios.IGNBRK | termios.BRKINT | termios.PARMRK
-                  | termios.ISTRIP | termios.INLCR | termios. IGNCR
-                  | termios.ICRNL | termios.IXON )
-    # oflag
-    attrs[1] &= ~termios.OPOST
-    # cflag
-    attrs[2] &= ~(termios.CSIZE | termios. PARENB)
-    attrs[2] |= termios.CS8
-    # lflag
-    attrs[3] &= ~(termios.ECHONL | termios.ECHO | termios.ICANON
-                  | termios.ISIG | termios.IEXTEN)
-    termios.tcsetattr(fd, termios.TCSANOW, attrs)
-    # turn off non-blocking
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags_save & ~os.O_NONBLOCK)
-    # read a single keystroke
-    ret = []
-    try:
-        ret.append(sys.stdin.read(1)) # returns a single character
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags_save | os.O_NONBLOCK)
-        c = sys.stdin.read(1) # returns a single character
-        while len(c) > 0:
-            ret.append(c)
-            c = sys.stdin.read(1)
-    except KeyboardInterrupt:
-        ret.append('\x03')
-    finally:
-        # restore old state
-        termios.tcsetattr(fd, termios.TCSAFLUSH, attrs_save)
-        fcntl.fcntl(fd, fcntl.F_SETFL, flags_save)
-    return tuple(ret)
-"""
 
 
 def SafeIO(*files):
@@ -3150,7 +3152,7 @@ def SafeIO(*files):
                     DbgMsg(f"{file} is protected", dbglabel=dbglb)
 
                 while os.path.exists(pro):
-                    Sleep(0.1)
+                    time.sleep(0.1)
 
                 ph.Touch(pro)
 
@@ -3288,7 +3290,7 @@ def BreakpointCheck(callerframe=None, nobreak=False):
                 # In case there is a race issue
                 os.remove(breakpointFlag)
             except Exception as err:
-                Quarter()
+                time.sleep(0.25)
                 count += 1
 
         if callerframe is None:
@@ -3329,30 +3331,6 @@ def RemoveFile(*args):
     for filename in args:
         if os.path.exists(filename):
             os.remove(filename)
-
-
-def Sleep(time_period):
-    """Sleep for the specified time interval"""
-
-    time.sleep(time_period)
-
-
-def Quarter():
-    """Sleep a Quarter Second"""
-
-    Sleep(0.25)
-
-
-def Half():
-    """Sleep Half Second"""
-
-    Sleep(0.5)
-
-
-def Second():
-    """Sleep for a second"""
-
-    Sleep(1)
 
 
 def FileExistsAndNonZero(filename):
@@ -3439,9 +3417,8 @@ def GetFolder(folder=downloadPath):
 
     items = list()
 
-    with os.scandir(folder) as fldr:
-        for entry in fldr:
-            items.append(entry)
+    for entry in os.scandir(folder):
+        items.append(entry)
 
     return items
 
@@ -3558,7 +3535,7 @@ def DownloadOptions(folderPath, withcaps=False):
 def DoAit(seconds, key=None, write=None):
     """Helper for Doing Ait Stuff"""
 
-    Sleep(seconds)
+    time.sleep(1)
 
     if key is not None:
         ait.press(key)
@@ -3572,14 +3549,14 @@ def DumbLogin():
 
     global Username, Password
 
-    Half()
+    time.sleep(0.5)
     ait.write(Username)
     ait.press("\t")
     ait.write(Password)
     ait.press("\t", "\t")
     ait.press("\n")
 
-    Second()
+    time.sleep(1)
 
 
 # deprecated
@@ -3590,7 +3567,7 @@ def SmartLogin(browser):
 
     success = False
 
-    browser = ASCBrowser("url to login box")
+    browser = ASCBrowser("url to login box", None)
 
     if browser.SwitchFrame(browser, 0):
         DbgMsg("Logging in", dbglabel=dbglb)
@@ -3626,13 +3603,13 @@ def SmartLogout(browser):
     span = "table[id='powpwfteaper27'] > tbody > tr > td > span[id='powpwfteaper28']"
     anchorID = "a[id='logoutMenuItem']"
 
-    browser = ASCBrowser("url to main page")
+    browser = ASCBrowser("url to main page", None)
 
     spanobj = browser.ByCSS(span)
 
     WebDriverWait(browser.browser, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
 
-    logoffAnchor = browser.ByCSS(nchorID)
+    logoffAnchor = browser.ByCSS(anchorID)
 
     spanobj.click()
 
@@ -3672,7 +3649,7 @@ def GeteBook(config, download_path):
 
     browser.Maximize()
 
-    browser.get(config["packt"]["url2"])
+    browser.Get(config["packt"]["url2"])
 
     btnCss = "button[id='freeLearningClaimButton']"
 
@@ -3682,7 +3659,7 @@ def GeteBook(config, download_path):
 
     browser.ClickActionObj(getAccessButton)
 
-    dlBtn = browser.TagToAppear("button[id='d4']", timeout=120)
+    dlBtn = browser.TagToAppear(By.CSS_SELECTOR, "button[id='d4']", timeout=120)
 
     while not (dlBtn.is_displayed() and dlBtn.is_enabled()):
         browser.Half()
@@ -3700,7 +3677,7 @@ def GeteBook(config, download_path):
             Msg(f"{file} : {progress}")
 
             if progress == 100:
-                Half()
+                time.sleep(0.5)
                 terminate = True
 
     browser.CloseDownloadsTab(downloadsTab, packtTab)
@@ -3713,7 +3690,7 @@ def GeteBook(config, download_path):
 
 def GetTSA(url):
 
-    browser = Browser(url)
+    browser = Browser(url, None)
 
     inputbox = browser.ByCSS("input[id='ipt1']")
 
@@ -3755,7 +3732,7 @@ def GetTSA(url):
 
 def GetStones(url):
 
-    browser = Browser(url)
+    browser = Browser(url, None)
 
     # Riddle of the rocks
     r1 = browser.ByCSS("input[id='r1Input']")
@@ -3784,7 +3761,7 @@ def GetStones(url):
 
         # Find people
 
-        items = browser.ByXPATH(f"//div/span/b")
+        items = browser.MultiByXPATH(f"//div/span/b")
 
         people = dict()
 
@@ -3864,6 +3841,8 @@ def ParseIntervalTime(interval_string):
     """Parse Provided Interval Time From Config"""
 
     count = interval_string.count(":")
+
+    interval = timedelta(days=1)
 
     if count == 0:
         # Assumes Days
@@ -3950,7 +3929,7 @@ if __name__ == '__main__':
         downloadPath = config["asc"]["downloadpath"]
 
         sessionASC = config.get(sessionName, "logpath", fallback=sessionASC)
-        interval_time = config["sac"]["interval"]
+        interval_time = config["asc"]["interval"]
         interval_time = config.get(sessionName, "interval", fallback=interval_time)
 
         interval = ParseIntervalTime(interval_time)
@@ -4009,7 +3988,7 @@ if __name__ == '__main__':
         if args.end is not None and args.start is not None:
             officialEnd = tsc.ConvertTimestamp(args.end)
         else:
-            value = config.get(sessionName,"end", fallback=None)
+            value = config.get(sessionName, "end", fallback=None)
 
             if value is None:
                 officialEnd = officialStart + timedelta(days=365)
