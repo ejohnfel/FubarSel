@@ -21,6 +21,7 @@ import asyncio
 import threading
 
 # My Stuff
+import py_helper as ph
 from py_helper import CmdLineMode, DebugMode, DbgMsg, Msg, DbgEnter, DbgExit, DbgNames, ErrMsg
 
 # Selenium Stuff
@@ -1549,7 +1550,6 @@ class ASCBrowser(Browser):
 
         return rows
 
-    @Eventing("Entering GetData", "Exiting GetData")
     def GetData(self, frame_name=None):
         """Get Data"""
 
@@ -1561,11 +1561,10 @@ class ASCBrowser(Browser):
             Event("Switching frame")
             self.SwitchFrame(frame_name)
 
-        Event("Closing popout")
         if self.ClosePopOut():
-            Event("Appears Popout was closed")
+            DbgMsg("Appears Popout was closed", dbglabel=dbglb)
         else:
-            Event("Appears Popout WAS NOT closed for some reason")
+            DbgMsg("Appears Popout WAS NOT closed for some reason", dbglabel=dbglb)
 
         DbgMsg("************* >>>>>>>>>>>>> Getting Rows <<<<<<<<<<<<<", dbglabel=ph.Informational)
 
@@ -1578,10 +1577,7 @@ class ASCBrowser(Browser):
         records = list()
 
         try:
-            Event("Entering try-while block")
             while retry:
-                Event("Getting rows")
-
                 count = 1
 
                 rows = self.GetRows()
@@ -1589,25 +1585,16 @@ class ASCBrowser(Browser):
                 for row in rows:
                     recording = RecordingRecord(row)
 
-                    Event("Checking for blank row")
                     if self.BlankRow(recording):
-                        Event("Row is blank")
                         DbgMsg(f"Row appears empty, skipping\n{recording.data}", dbglabel=dbglb)
                         continue
 
-                    if DebugMode() and (recording.data is None or recording.rowkey is None):
-                        DbgMsg("Recording.data or recording.rowkey is none, why? PrintEvents() to see event list", dbglabel=ph.Informational)
-                        breakpoint()
-
                     last_rowkey = recording.rowkey
-                    Event(f"Processing {last_rowkey}")
                     loaded = None
 
                     try:
-                        Event("Checking for blanks, ie. no search results")
                         loaded = recording.data.get("Loaded", "xxx")
                         retry = False
-                        Event("Checking for no search results seems to have succeeded")
                     except Exception as err:
                         Msg(f"Checking for 'Loaded' column seems to have failed : {err}")
                         retry = True if retry_count < retries else False
@@ -1619,19 +1606,15 @@ class ASCBrowser(Browser):
 
                         records.append(recording)
                     elif loaded == norecs:
+                        retry = False
                         DbgMsg("No data for this time frame", dbglabel=dbglb)
                     else:
                         DbgMsg(f"Something other than no data rows has happened for processed item {count}",
                                dbglabel=dbglb)
                         DbgMsg(f"Record is\n{recording.data}", dbglabel=dbglb)
 
-                    if BreakpointCheck(nobreak=True) and DebugMode():
-                        DbgMsg(f"In {dbglb} when manual breakpoint detected", dbglabel=dbglb)
-                        breakpoint()
-
                 DbgMsg(f"Items processed - {count}", dbglabel=ph.Informational)
         except Exception as err:
-            PrintEvents()
             ErrMsg(err, "An error occurred while trying to process rows from the search")
 
             if DebugMode():
@@ -1871,7 +1854,6 @@ class ASCBrowser(Browser):
 
         return success, needs_refresh
 
-    @Eventing("Starting Search")
     def Search(self, startDate, endDate):
         """Set and Conduct Search"""
 
@@ -1879,36 +1861,26 @@ class ASCBrowser(Browser):
 
         DbgEnter(dbgblk, dbglb)
 
-        events = list()
-
         try:
-            Event("Beginning Search Run")
-
             try:
-                Event("Looking for general dropdown button")
                 # Find "General dropdown
                 general = self.ByCSS("a[id='conversationToolbar:commonFunctionsMenuBtn']")
                 self.ClickActionObj(general)
-                Event("General dropdown clicked")
             except Exception as err:
-                Event(f"General dropdown button could not be found, {err}")
+                ErrMsg(err, "An error occurred while trying to find a webelement")
 
             self.Half()
 
             try:
-                Event("Looking for search anchor")
                 # Find Search anchor and click it
                 anchor = self.ByCSS("a[id='conversationToolbar:toolbarSearchBtn']")
                 self.ClickActionObj(anchor)
-                Event("Anchor clicked")
             except Exception as err:
-                Event(f"Anchor either not found or not clicked : {err}")
+                ErrMsg(err, "An error occurred while trying to find a webelement")
 
             self.Half()
 
             try:
-                Event("Select box section")
-
                 # Set Select box
                 sbox = self.ByCSS("select[id='conversationObjectView:j_idt132:searchdatatable:0:searchMenu']")
                 WebDriverWait(self.browser, 5).until(visibility_of(sbox))
@@ -1916,10 +1888,8 @@ class ASCBrowser(Browser):
                 select = Select(sbox)
                 # Set "between", then set dates. VALUE = "BETWEEN"
                 select.select_by_value('BETWEEN')
-
-                Event("Selection Completed")
             except Exception as err:
-                Event(f"Search box not found or filled, an error occurred : {err}")
+                ErrMsg(err, "An error occurred while trying to find a webelement")
 
             self.Half()
 
@@ -1929,8 +1899,6 @@ class ASCBrowser(Browser):
             closeAnchor = self.ByCSS(closeAnchorCss)
 
             try:
-                Event(f"Beginning Search between {startDate} and {endDate}")
-
                 WebDriverWait(self.browser, 5).until(presence_of_element_located(
                     (By.CSS_SELECTOR,
                      "input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarOne_input']")))
@@ -1951,13 +1919,12 @@ class ASCBrowser(Browser):
                 endInput.clear()
                 endInput.send_keys(endDate.strftime("%m/%d/%Y %I:%M:%S %p"))
 
-                DbgMsg(f"Conducting search between {startDate} and {endDate}", dbglabel=dbglb)
+                Msg(f"Conducting search between {startDate} and {endDate}")
 
                 # Start Search
                 self.ClickActionObj(searchBtn)
-                Event("Search completed")
             except Exception as err:
-                Event(f"An error occurred while filling out the search : {err}")
+                ErrMsg(err, "An error occurred while trying to find a webelement")
 
             # Wait for search to complete
 
@@ -1973,17 +1940,8 @@ class ASCBrowser(Browser):
 
             # Close Search Box
             self.ClickActionObj(closeAnchor)
-
-            Event("Close anchor clicked, we done")
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to execute a search")
-
-            Event(f"Bummer, an error occurred while attempting a search : {err}")
-
-            if DebugMode():
-                DbgMsg(
-                    f"Something hit the fan during a search, you can checked the 'events' list to see the last successful or errored event")
-                breakpoint()
 
         DbgExit(dbgblk, dbglb)
 
@@ -2618,13 +2576,18 @@ class RecordingRecord:
 
         try:
             self.cells = row.find_elements(By.CSS_SELECTOR, "td")
-            data_from_cells = [str(cell.text) for cell in self.cells]
-            self.data = dict(zip(header, data_from_cells))
-            self.rowkey = self.data["Conversation ID"]
+
+            if len(self.cells) > 1
+                data_from_cells = [str(cell.text) for cell in self.cells]
+                self.data = dict(zip(header, data_from_cells))
+                self.rowkey = self.data["Conversation ID"]
+            else:
+                if self.cells[0].text == "No records found":
+                    DbgMsg("No records returned", dbglabel=dbglb)
         except StaleElementReferenceException as err_ser:
             DbgMsg("Stale element exception", dbglabel=ph.Informational)
         except Exception as err:
-            DbgMsg("Failed to find TD that contains the cells with information", dbglabel=ph.Informational)
+            DbgMsg("Failed to find TD that contains the cells with information, possible no records found", dbglabel=ph.Informational)
 
         DbgExit(dbgblk, dbglb)
 
