@@ -416,6 +416,35 @@ class Browser(SleepShortCuts):
 
         return item
 
+    def ByID(self, id):
+        """Find Element By ID"""
+
+        dbgblk, dbglb = DbgNames(self.ByID)
+
+        DbgEnter(dbgblk, dbglb)
+
+        element = None
+        err = None
+
+        try:
+            element = self.browser.find_element_by_id(id)
+        except TimeoutException as err_toe:
+            DbgMsg("Timeout reached exception", dbglabel=dbglb)
+            err = err_toe
+        except NoSuchElementException as err_nse:
+            DbgMsg("No such element exception", dbglabel=dbglb)
+            err = err_nse
+        except StaleElementReferenceException as err_see:
+            DbgMsg("Stale element exception", dbglabel=dbglb)
+            err = err_see
+        except Exception as err_err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err_err}", dbglabel=dbglb)
+            err = err_err
+
+        DbgExit(dbgblk, dbglb)
+
+        return element, err
+
     def ByCSS(self, css, msg=''):
         """Get By CSS Shortcut"""
 
@@ -425,22 +454,27 @@ class Browser(SleepShortCuts):
 
         DbgMsg(f"Searching for : {css} / {msg}", dbglabel=dbglb)
 
-        item = None
+        element = None
+        err = None
 
         try:
-            item = self.browser.find_element(By.CSS_SELECTOR, css)
-        except TimeoutException:
+            element = self.browser.find_element(By.CSS_SELECTOR, css)
+        except TimeoutException as err_toe:
             DbgMsg("Timeout reached exception", dbglabel=dbglb)
-        except NoSuchElementException:
+            err = err_toe
+        except NoSuchElementException as err_nse:
             DbgMsg("No such element exception", dbglabel=dbglb)
-        except StaleElementReferenceException:
+            err = err_nse
+        except StaleElementReferenceException as err_see:
             DbgMsg("Stale element exception", dbglabel=dbglb)
-        except Exception as err:
-            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err}", dbglabel=dbglb)
+            err = err_see
+        except Exception as err_err:
+            DbgMsg(f"A generic error occurred while waiting or looking for a warning popup : {err_err}", dbglabel=dbglb)
+            err = err_err
 
         DbgExit(dbgblk, dbglb)
 
-        return item
+        return element
 
     def ByCSSIn(self, element, css):
         """Find Elements within another element"""
@@ -3549,6 +3583,7 @@ def GeteBook(config, download_path):
 
 
 def GetTSA(url):
+    """Techstep Academy Training Ground"""
 
     browser = Browser(url, None)
 
@@ -3558,14 +3593,7 @@ def GetTSA(url):
 
     button1 = browser.ByCSS("button[id='b1']")
 
-    if DebugMode():
-        breakpoint()
-
-    browser.Sleep(2)
-
     browser.ClickActionObj(button1)
-
-    browser.Sleep(2)
 
     # alert = browser.switch_to.alert
     alert = Alert(browser.browser)
@@ -3582,15 +3610,15 @@ def GetTSA(url):
     if match is not None:
         price = match[0][1:]
 
-    browser.Sleep(2)
-
-    if DebugMode():
-        breakpoint()
+    Msg("Sleeping for 8 seconds")
+    browser.Sleep(8)
+    #Pause("Paused here...")
 
     browser.Quit()
 
 
 def GetStones(url):
+    """Tech Step Academy - Trial of the Stones Challenge"""
 
     browser = Browser(url, None)
 
@@ -3666,9 +3694,11 @@ def GetStones(url):
 
         assert div.get_attribute("style") != "display: none;"
 
-        browser.Sleep(2)
+    Msg("Sleeping for 8 seconds")
+    browser.Sleep(8)
+    #Pause("Paused here...")
 
-        browser.Quit()
+    browser.Quit()
 
 
 def BuildParser():
@@ -3676,7 +3706,7 @@ def BuildParser():
 
     parser = argparse.ArgumentParser(prog="opfubar", description="OpFubar", epilog="There is no help in this place")
 
-    parser.add_argument("cmd", nargs="*", choices=["asc", "packt", "dev"], default="asc", help="Scraper to call")
+    parser.add_argument("cmd", nargs="*", choices=["asc", "packt", "dev", "tsa", "stones"], default="asc", help="Scraper to call")
     parser.add_argument("--clearlog", action="store_true", help="Clear Run Log")
     parser.add_argument("--clearcat", action="store_true", help="Clear catalog")
     parser.add_argument("--clearfolder", action="store_true", help="Clear download folder of disposable logs")
@@ -3909,9 +3939,10 @@ if __name__ == '__main__':
         #chrome = webdriver.Remote(command_executor="http://merry.digitalwicky.biz:4444", options=options)
 
         GeteBook(config, downloadPath)
+    elif cmd == "stones":
+        GetStones(urls["tsatrial"])
     else:
         GetTSA(urls["tsa"])
-        # GetStones(urls["tsatrial"])
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 
