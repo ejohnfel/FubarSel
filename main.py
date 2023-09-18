@@ -1333,6 +1333,8 @@ class ASCBrowser(Browser):
 
         DbgEnter("Logging out", dbglb)
 
+        self.SwitchTab(self.ascTab)
+
         span = "table[id='powpwfteaper27'] > tbody > tr > td > span[id='powpwfteaper28']"
         anchorID = "a[id='logoutMenuItem']"
 
@@ -3902,6 +3904,8 @@ if __name__ == '__main__':
             asc_browser = ASCBrowser(url, downloadPath)
 
             asc_browser.GetVoiceRecordings(interval, Username, Password)
+
+            asc_browser.Quit()
     elif cmd == "dev":
         ph.NotImplementedYet("Disabled during refactor")
 
