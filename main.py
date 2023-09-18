@@ -1240,6 +1240,9 @@ class ASCBrowser(Browser):
 
         DbgEnter(dbgblk, dbglb)
 
+        if switch_to is None:
+            switch_to = self.ascTab
+
         super().CloseDownloadsTab(self.downloadsTab, switch_to)
 
         DbgExit(dbgblk, dbglb)
@@ -2291,33 +2294,34 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-    def CheckActiveDownloads(self, activeDownloads, downloadCount, sleep_time=2.0, pause=1.0):
+    def CheckActiveDownloads(self, active_downloads, download_count, sleep_time=2.0, pause=0.5):
         """Check (and/or Wait for) Active Downloads"""
 
         dbgblk, dbglb = DbgNames(self.CheckActiveDownloads)
 
         DbgEnter(dbgblk, dbglb)
 
-        completedCount = 0
+        completed_count = 0
 
-        while len(activeDownloads) > downloadCount:
-            for activeDownload in activeDownloads:
-                progress = activeDownload.GetDownloadProgress(self, sleep_time=sleep_time)
+        if len(active_downloads) > download_count:
+            while len(active_downloads) > 0:
+                for active_download in active_downloads:
+                    progress = active_download.GetDownloadProgress(self, sleep_time=sleep_time)
 
-                if progress >= 100:
-                    DbgMsg(f"Completing {activeDownload.ConversationID()}", dbglabel=dbglb)
-                    self.CompleteDownload(activeDownload)
+                    if progress >= 100:
+                        DbgMsg(f"Completing {active_download.ConversationID()}", dbglabel=dbglb)
+                        self.CompleteDownload(active_download)
 
-                    activeDownloads.remove(activeDownload)
+                        active_downloads.remove(active_download)
 
-                    completedCount += 1
+                        completed_count += 1
 
-            if len(activeDownloads) >= simultaneousDownloads and pause > 0:
-                self.Sleep(pause)
+                        if pause > 0:
+                            self.Sleep(pause)
 
         DbgExit(dbgblk, dbglb)
 
-        return completedCount
+        return completed_count
 
     def SearchPageForward(self, pages=1):
         """Page Forward in Search Results"""
@@ -2390,6 +2394,7 @@ class ASCBrowser(Browser):
         DbgMsg(f"Starting run between {startDate} and {officialEnd}", dbglabel=dbglb)
 
         needs_refresh = False
+        endDate = datetime.now()
 
         endDate = officialEnd
 
@@ -2485,11 +2490,11 @@ class ASCBrowser(Browser):
 
                         break
 
-            self.Sleep(5.0)
+            self.Sleep(3.0)
             DbgMsg("Refreshing browser instance", dbglabel=dbglb)
             self.Refresh()
             self.Sleep(1)
-
+            
             while not self.ReadyState():
                 self.Half()
 
@@ -2503,7 +2508,7 @@ class ASCBrowser(Browser):
 
         self.CloseDownloadsTab()
 
-        DbgMsg(f"Completed\t: {completed}\nErrored\t: {errored}", dbglabel=ph.Informational)
+        DbgMsg(f"Completed: {completed}, Errored: {errored}", dbglabel=ph.Informational)
 
         DbgExit(dbgblk, dbglb)
 
