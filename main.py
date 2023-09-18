@@ -3624,7 +3624,7 @@ def GetStones(url):
 
     # Riddle of the rocks
     r1 = browser.ByCSS("input[id='r1Input']")
-    r1btn = browser.ByCSS("button#r1Btn")
+    r1btn = browser.ByCSS("button#r1Btn")       # Notice here, we provide a CSS button selector WITH an ID
     r1.send_keys("rock")
 
     browser.ClickActionObj(r1btn)
