@@ -39,8 +39,6 @@ from selenium.webdriver.support.expected_conditions import *
 # Pre-Class/Def Variable Block
 
 # Informational Debug Label
-informational = "Informational"
-
 downloadPathASC = r"S:\Backups\asc"
 sessionASC = f"{downloadPathASC}\\session1"
 downloadPathPackt = r"Y:\media\eBooks\Packt\freebies"
@@ -347,7 +345,7 @@ class Browser(SleepShortCuts):
 
         self.downloadPath = download_path
 
-        self.options = DownloadOptions(download_path)
+        self.options = self.DownloadOptions(download_path)
         self.browser = webdriver.Chrome(options=self.options)
         self.Get(url)
 
@@ -648,11 +646,15 @@ class Browser(SleepShortCuts):
     def SwitchShadowRootFrame(self, name, pause=0):
         """Switch to Frame in Shadow Root"""
 
-        not self
+        dbgblk, dbglb = DbgNames(self.SwitchShadowRootFrame)
+
+        DbgEnter(dbgblk, dbglb)
 
         success = False
 
         ph.NotImplementedYet()
+
+        DbgExit(dbgblk, dbglb)
 
         return success
 
@@ -785,10 +787,6 @@ class Browser(SleepShortCuts):
         dbgblk, dbglb = DbgNames(self.GetDownloads)
 
         DbgEnter(dbgblk, dbglb)
-
-        if BreakpointCheck(nobreak=True) and DebugMode():
-            DbgMsg("Manual breakpoint detected", dbglabel=dbglb)
-            breakpoint()
 
         originalTab = self.browser.current_window_handle
 
@@ -1201,18 +1199,14 @@ class ASCBrowser(Browser):
 
         return current_window, tab_handle
 
-    def CloseDownloadsTab(self):
+    def CloseDownloadsTab(self, switch_to=None, **kwargs):
         """Close Downloads Tab"""
 
         dbgblk, dbglb = DbgNames(self.CloseDownloadsTab)
 
         DbgEnter(dbgblk, dbglb)
 
-        self.SwitchWindow(self.downloadsTab)
-
-        self.browser.close()
-
-        self.SwitchWindow(self.ascTab)
+        super().CloseDownloadsTab(self.downloadsTab, switch_to)
 
         DbgExit(dbgblk, dbglb)
 
@@ -1493,11 +1487,11 @@ class ASCBrowser(Browser):
                     blank = True
             else:
                 if DebugMode():
-                    DbgMsg("row appears to be empty for some reason", dbglabel=informational)
+                    DbgMsg("row appears to be empty for some reason", dbglabel=ph.Informational)
                     breakpoint()
 
         except StaleElementReferenceException as err_ser:
-            DbgMsg("Stale element reference, not sure why", dbglabel=informational)
+            DbgMsg("Stale element reference, not sure why", dbglabel=ph.Informational)
         except Exception as err:
             ErrMsg(err, "Not sure what happened here while trying to check row for being empty")
 
@@ -1534,7 +1528,7 @@ class ASCBrowser(Browser):
         else:
             Event("Appears Popout WAS NOT closed for some reason")
 
-        DbgMsg("************* >>>>>>>>>>>>> Getting Rows <<<<<<<<<<<<<", dbglabel="Informational")
+        DbgMsg("************* >>>>>>>>>>>>> Getting Rows <<<<<<<<<<<<<", dbglabel=ph.Informational)
 
         norecs = "No records found"
 
@@ -1563,7 +1557,7 @@ class ASCBrowser(Browser):
                         continue
 
                     if DebugMode() and (recording.data is None or recording.rowkey is None):
-                        DbgMsg("Recording.data or recording.rowkey is none, why? PrintEvents() to see event list", dbglabel=informational)
+                        DbgMsg("Recording.data or recording.rowkey is none, why? PrintEvents() to see event list", dbglabel=ph.Informational)
                         breakpoint()
 
                     last_rowkey = recording.rowkey
@@ -1596,7 +1590,7 @@ class ASCBrowser(Browser):
                         DbgMsg(f"In {dbglb} when manual breakpoint detected", dbglabel=dbglb)
                         breakpoint()
 
-                DbgMsg(f"Items processed - {count}", dbglabel="Informational")
+                DbgMsg(f"Items processed - {count}", dbglabel=ph.Informational)
         except Exception as err:
             PrintEvents()
             ErrMsg(err, "An error occurred while trying to process rows from the search")
@@ -1816,7 +1810,7 @@ class ASCBrowser(Browser):
             ErrMsg(err, "An error occurred while trying to activate a row")
 
             if DebugMode():
-                DbgMsg("So your trace", dbglabel="Informational")
+                DbgMsg("So your trace", dbglabel=ph.Informational)
                 breakpoint()
 
         self.Half()
@@ -1954,48 +1948,14 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-    def GetDownloads(self, sleep_time=3):
+    def GetDownloads(self, sleep_time=3, **kwargs):
         """Get List of Downloads In Download Tab"""
 
         dbgblk, dbglb = DbgNames(self.GetDownloads)
 
         DbgEnter(dbgblk, dbglb)
 
-        if BreakpointCheck(nobreak=True) and DebugMode():
-            DbgMsg("Manual breakpoint detected", dbglabel=dbglb)
-            breakpoint()
-
-        originalTab = self.browser.current_window_handle
-
-        self.SwitchTab(self.downloadsTab)
-
-        if sleep_time > 0:
-            self.Sleep(sleep_time)
-
-        downloadsScript = "return document.querySelector('downloads-manager').shadowRoot.querySelectorAll('#downloadsList downloads-item')"
-
-        downloads = self.browser.execute_script(downloadsScript)
-
-        downloadDict = dict()
-
-        progress = {"value": "100"}
-
-        for download in downloads:
-            try:
-                fname = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#file-link"))
-
-                try:
-                    progress = edom(download.shadow_root.find_element(By.CSS_SELECTOR, "#progress"))
-                except NoSuchElementException:
-                    DbgMsg("No such element error, progress is not available, assuming 100%", dbglabel=dbglb)
-
-                downloadDict[fname["text"]] = int(progress["value"])
-            except NoSuchElementException:
-                DbgMsg("Could not file 'file-link' in shadow root of downloads-item")
-            except Exception as err:
-                Msg(f"Trouble getting download information : {err}")
-
-        self.MainContext()
+        downloadDict = super().GetDownloads(self.downloadsTab,sleep_time)
 
         DbgExit(dbgblk, dbglb)
 
@@ -2019,6 +1979,8 @@ class ASCBrowser(Browser):
 
             ready = False
 
+            reason = "No reason"
+
             try:
                 if checkbox.is_displayed() and checkbox.is_enabled():
                     ready = True
@@ -2031,7 +1993,7 @@ class ASCBrowser(Browser):
                     reason = "not enabled"
 
                 if DebugMode():
-                    DbgMsg(f"audioInput is {reason}... what gives", dbglabel=informational)
+                    DbgMsg(f"audioInput is {reason}... what gives", dbglabel=ph.Informational)
 
             return ready
 
@@ -2167,7 +2129,7 @@ class ASCBrowser(Browser):
                 # Begin Download
                 global_temp = ("activation succeeded", rowkey)
 
-                DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel="Informational")
+                DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel=ph.Informational)
 
                 success, reason = self.BeginDownload()
 
@@ -2282,7 +2244,7 @@ class ASCBrowser(Browser):
 
                     os.remove(myzipfile)
 
-                    DbgMsg(f"Download Completed {recording.rowkey} / {download.ConversationID()} for {download.Timestamp()}", dbglabel=informational)
+                    DbgMsg(f"Download Completed {recording.rowkey} / {download.ConversationID()} for {download.Timestamp()}", dbglabel=ph.Informational)
                 else:
                     self.CompleteBadRecording(download)
 
@@ -2395,6 +2357,8 @@ class ASCBrowser(Browser):
 
         needs_refresh = False
 
+        endDate = officialEnd
+
         while startDate < officialEnd:
             if not needs_refresh:
                 endDate = startDate + searchInterval - correction
@@ -2425,7 +2389,7 @@ class ASCBrowser(Browser):
                     recordings = self.GetData(self.mainFrame)
 
                     if len(recordings) == 0:
-                        DbgMsg(f"Retrying to get rows from current search page : {retries}", dbglabel=informational)
+                        DbgMsg(f"Retrying to get rows from current search page : {retries}", dbglabel=ph.Informational)
                         retries += 1
                         self.Quarter()
 
@@ -2467,7 +2431,7 @@ class ASCBrowser(Browser):
 
                     completed += self.CheckActiveDownloads(activeDownloads, simultaneousDownloads, 1.25)
 
-                DbgMsg(f"Not skipped - {not_skipped}, Skipped - {skipped}, errored {interval_errored}, requires refresh : {needs_refresh}", dbglabel=informational)
+                DbgMsg(f"Not skipped - {not_skipped}, Skipped - {skipped}, errored {interval_errored}, requires refresh : {needs_refresh}", dbglabel=ph.Informational)
 
                 del recordings
 
@@ -2505,7 +2469,7 @@ class ASCBrowser(Browser):
 
         self.CloseDownloadsTab()
 
-        DbgMsg(f"Completed\t: {completed}\nErrored\t: {errored}", dbglabel="Informational")
+        DbgMsg(f"Completed\t: {completed}\nErrored\t: {errored}", dbglabel=ph.Informational)
 
         DbgExit(dbgblk, dbglb)
 
@@ -2617,9 +2581,9 @@ class RecordingRecord:
             self.data = dict(zip(header, data_from_cells))
             self.rowkey = self.data["Conversation ID"]
         except StaleElementReferenceException as err_ser:
-            DbgMsg("Stale element exception", dbglabel=informational)
+            DbgMsg("Stale element exception", dbglabel=ph.Informational)
         except Exception as err:
-            DbgMsg("Failed to find TD that contains the cells with information", dbglabel=informational)
+            DbgMsg("Failed to find TD that contains the cells with information", dbglabel=ph.Informational)
 
         DbgExit(dbgblk, dbglb)
 
@@ -2656,7 +2620,7 @@ class VoiceDownload:
 
         success = True
 
-        downloads = browser.GetDownloads(sleep_time)
+        downloads = browser.GetDownloads(None, sleep_time)
 
         if len(downloads) == 0:
             success = False
@@ -3485,11 +3449,12 @@ def ShowCatalog(catalog=None):
         header = "No data to show"
 
         if len(rows) > 0:
-            header = str(rows[0].keys())
+            header = ",".join(rows[0].keys())
 
             Msg(header)
             for row in rows:
-                Msg(str(row.values()))
+                line = ",".join([str(x) for x in row.values()])
+                Msg(line)
         else:
             Msg(f"{header}")
     else:
@@ -3504,34 +3469,6 @@ def ShowCatalog(catalog=None):
             Msg("No items in catalog to display")
 
 
-# deprecated
-def DownloadOptions(folderPath, withcaps=False):
-    """Set Browser Download Path"""
-
-    options = Options()
-
-    if withcaps:
-        # options.set_capability("browserVersion", "latest")
-        # options.set_capability("platformName", "linux")
-        options.set_capability("platformName", "Windows 10")
-
-        # Folder path removed here for Grid system, can be added back in if path exists
-        options.add_experimental_option("prefs", {
-        "download.prompt_for_download": False,
-        "download.directory_upgrade": True,
-        "safebrowsing.enabled": True})
-    else:
-        options.add_experimental_option("prefs", {
-        "download.default_directory": folderPath,
-        "download.prompt_for_download": False,
-        "download.directory_upgrade": True,
-        "safebrowsing.enabled": True})
-
-    options.add_argument('ignore-certificate-errors')
-
-    return options
-
-
 def DoAit(seconds, key=None, write=None):
     """Helper for Doing Ait Stuff"""
 
@@ -3541,83 +3478,6 @@ def DoAit(seconds, key=None, write=None):
         ait.press(key)
     elif write is not None:
         ait.write(write)
-
-
-# deprecated
-def DumbLogin():
-    """Logging Into ACS, the Dumb Way, Ommmm"""
-
-    global Username, Password
-
-    time.sleep(0.5)
-    ait.write(Username)
-    ait.press("\t")
-    ait.write(Password)
-    ait.press("\t", "\t")
-    ait.press("\n")
-
-    time.sleep(1)
-
-
-# deprecated
-def SmartLogin(browser):
-    """Smart Login ACS"""
-
-    dbgblk, dbglb = DbgNames(SmartLogin)
-
-    success = False
-
-    browser = ASCBrowser("url to login box", None)
-
-    if browser.SwitchFrame(browser, 0):
-        DbgMsg("Logging in", dbglabel=dbglb)
-
-        userInput = browser.ByCSS("input[id='loginTabView:loginName:inputPanel:inputText']")
-        passwordInput = browser.ByCSS("input[id='loginTabView:loginPassword:inputPanel:inputPassword']")
-        submitButton = browser.ByCSS("button[id='loginTabView:loginButton']")
-
-        userInput.send_keys(Username)
-        passwordInput.send_keys(Password)
-
-        browser.Half()
-
-        browser.ClickActionObj(submitButton)
-
-        browser.Second()
-
-        success = True
-    else:
-        Msg("*** Mucho problemo Jose!!! Can't log in")
-
-    return success
-
-
-# deprecated
-def SmartLogout(browser):
-    """Logout Helper"""
-
-    dbgblk, dbglb = DbgNames(SmartLogout)
-
-    DbgEnter("Logging out", dbglb)
-
-    span = "table[id='powpwfteaper27'] > tbody > tr > td > span[id='powpwfteaper28']"
-    anchorID = "a[id='logoutMenuItem']"
-
-    browser = ASCBrowser("url to main page", None)
-
-    spanobj = browser.ByCSS(span)
-
-    WebDriverWait(browser.browser, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
-
-    logoffAnchor = browser.ByCSS(anchorID)
-
-    spanobj.click()
-
-    WebDriverWait(browser.browser, 30).until(visibility_of(logoffAnchor))
-
-    logoffAnchor.click()
-
-    DbgExit(dbgblk, dbglb)
 
 
 def GeteBook(config, download_path):
@@ -4033,8 +3893,7 @@ if __name__ == '__main__':
             if args.clearcat:
                 os.remove(catalogFilename)
 
-        options = DownloadOptions(downloadPath)
-        chrome = webdriver.Chrome(options=options)
+        browser = ASCBrowser(urls["asc"], downloadPath)
     elif cmd == "packt":
         Username = config["packt_creds"]["username"]
         Password = config["packt_creds"]["password"]
