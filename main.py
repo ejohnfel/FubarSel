@@ -2577,7 +2577,7 @@ class RecordingRecord:
         try:
             self.cells = row.find_elements(By.CSS_SELECTOR, "td")
 
-            if len(self.cells) > 1
+            if len(self.cells) > 1:
                 data_from_cells = [str(cell.text) for cell in self.cells]
                 self.data = dict(zip(header, data_from_cells))
                 self.rowkey = self.data["Conversation ID"]
