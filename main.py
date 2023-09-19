@@ -2366,6 +2366,8 @@ class ASCBrowser(Browser):
                     retries += 1
 
                 self.Sleep(2 + adjustment)
+
+                page_count += 1
             else:
                 moved_forward = False
 
