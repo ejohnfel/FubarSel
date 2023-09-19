@@ -379,6 +379,11 @@ class Browser(SleepShortCuts):
 
         self.browser = browser2
 
+    def Alert(self):
+        """Return Alert Object"""
+
+        return Alert(self.browser)
+
     def Windows(self):
         """Show all window ID's and currently selected window"""
 
@@ -913,6 +918,30 @@ class Browser(SleepShortCuts):
 
         return flag
 
+    def WaitUntil(self, expected_condition, timeout=5, poll_frequency=0.5, ignored_exceptions=None):
+        """Generic Wait Until"""
+
+        success = True
+
+        try:
+            WebDriverWait(self.browser, timeout, poll_frequency, ignored_exceptions).until(expected_condition)
+        except TimeoutException:
+            success = False
+
+        return success
+
+    def WaitUntilNot(self, expected_condition, timeout=5, poll_frequency=0.5, ignored_exceptions=None):
+        """Generic Wait Until Not"""
+
+        success = True
+
+        try:
+            element = WebDriverWait(self.browser, timeout, poll_frequency, ignored_exceptions).until_not(expected_condition)
+        except TimeoutException:
+            success = False
+
+        return success
+
     def TagToAppear(self, selector_type, selector, timeout=5):
         """Wait for Tag to Appear"""
 
@@ -945,7 +974,7 @@ class Browser(SleepShortCuts):
 
         return result
 
-    def WaitPresenceCSS(self, timeout, selector, msg=""):
+    def WaitPresenceCSS(self, timeout, selector):
         """Wait for Something to be present"""
 
         dbgblk, dbglb = DbgNames(self.WaitPresenceCSS)
@@ -961,19 +990,11 @@ class Browser(SleepShortCuts):
         resultset["error"] = (False, None)
         resultset["item"] = None
 
-        if msg != "":
-            msg = f"- {msg}"
-
         try:
-            DbgMsg(f"Waiting for : {selector} {msg}", dbglabel=dbglb)
-
             WebDriverWait(self.browser, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
             resultset["present"] = True
 
             resultset["item"] = self.ByCSS(selector)
-
-            if DebugMode() and msg == "Waiting for save box":
-                breakpoint()
         except TimeoutException as t_err:
             resultset["timeout"] = True
             resultset["error"] = (True, t_err)
