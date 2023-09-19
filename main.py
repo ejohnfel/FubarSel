@@ -1509,6 +1509,24 @@ class ASCBrowser(Browser):
 
         return blank
 
+    def NoRecordsReturned(self, rows=None, row=None):
+        """Check for No Records Returned"""
+
+        no_recs = "No records found"
+        no_records = False
+        cells = None
+
+        if rows is not None:
+            if len(rows) == 1:
+                cells = self.MultiByCSSIn(rows[0], "td")
+        elif row is not None:
+            cells = self.MultiByCSSIn(row, "td")
+
+        if cells is not None and len(cells) == 1 and cells[0].text == no_recs:
+            no_records = True
+
+        return no_records
+
     def BlankRowOrLine(self, row):
         """Blank Row or Line"""
 
@@ -1574,6 +1592,7 @@ class ASCBrowser(Browser):
         retry_count = 0
         retry = True
         last_rowkey = None
+        no_records = False
         records = list()
 
         try:
@@ -1581,6 +1600,11 @@ class ASCBrowser(Browser):
                 count = 1
 
                 rows = self.GetRows()
+
+                if self.NoRecordsReturned(rows):
+                    DbgMsg("No records returned", dbglabel=ph.Informational)
+                    no_records = True
+                    break
 
                 for row in rows:
                     recording = RecordingRecord(row)
@@ -1622,7 +1646,7 @@ class ASCBrowser(Browser):
 
         DbgExit(dbgblk, dbglb)
 
-        return records
+        return records, no_records
 
     def PausePlayer(self, timeout=5):
         """Pause Player"""
@@ -1827,7 +1851,6 @@ class ASCBrowser(Browser):
                     return success, needs_refresh
                 else:
                     self.Second()
-
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
 
@@ -1845,10 +1868,6 @@ class ASCBrowser(Browser):
 
         if success:
             self.PausePlayer(timeout=2)
-
-        if BreakWhen(conditions, rowkey=rowkey):
-            DbgMsg(f"Rowkey, {rowkey}, matches for breakpoint", dbglabel=dbglb)
-            breakpoint()
 
         DbgExit(dbgblk, dbglb)
 
@@ -1959,6 +1978,7 @@ class ASCBrowser(Browser):
         return downloadDict
 
     def BeginDownload(self):
+
         """Begin Download"""
 
         dbgblk, dbglb = DbgNames(self.BeginDownload)
@@ -2008,73 +2028,81 @@ class ASCBrowser(Browser):
         # Will Bring up dialog
         audioInputDis = None
         audioInput = self.ByCSS(mediaSrcsAudioCss, msg="AKA mediaSources Inputbox")
+        cancelBtn = self.ByCSS(cancelBtnCss)
 
         if audioInput is None:
             audioInputDis = self.ByCSS(mediaSrcsAudioCssDis)
 
-        cancelBtn = self.ByCSS(cancelBtnCss)
-
-        self.Half()
-
-        audioEnabled = False
-        count = 0
-
-        # Wait 3 seconds to see if audioInput box is visible
-        results = self.WaitUntilTrue(3, audioCheckboxTest, audioInput)
-
-        try:
-            if audioInputDis is None and audioInput is not None and audioCheckboxTest(audioInput):
-
-                audioEnabled = True
-
-                self.ClickActionObj(audioInput)
-
-                self.Half()
-
-                aiObj = edom(audioInput)
-
-                while not aiObj.get_prop("checked", False) and count < 3:
-                    self.Half()
-                    self.ClickActionObj(audioInput)
-                    count += 1
-                else:
-                    if count > 2 and not aiObj.get_prop("checked", False):
-                        success = False
-
-                        self.ClickActionObj(cancelBtn)
-
-                        DbgExit(dbgblk, dbglb)
-
-                        return success
-
-                self.Half()
-
-                okBtn = self.ByCSS(okBtnCss)
-
-                self.Half()
-
-                self.ClickActionObj(okBtn)
-            else:
-                reason = "not checked"
-
-                DbgMsg("Cancelling download because audio checkbox is not checked, enabled or invisible", dbglabel=dbglb)
-
+            if audioInputDis is not None:
+                reason = "Checkbox not enabled"
                 success = False
-                self.Half()
-                self.ClickActionObj(cancelBtn)
-
+                try:
+                    self.Half()
+                    self.ClickActionObj(cancelBtn)
+                except Exception as err:
+                    if DebugMode():
+                        breakpoint()
+        else:
             self.Half()
-        except ElementClickInterceptedException as err_eci:
-            success = False
 
-            if DebugMode():
-                DbgMsg("audio checkbox unable to be clicked, likely disabled by CSS", dbglabel=dbglb)
-        except TimeoutException as err_to:
-            ErrMsg(err_to, "Bummer, it seems the checkbox is not checked")
-        except Exception as err:
-            ErrMsg(err, "Click to download failed")
             audioEnabled = False
-            success = False
+            count = 0
+
+            # Wait 3 seconds to see if audioInput box is visible
+            results = self.WaitUntilTrue(3, audioCheckboxTest, audioInput)
+
+            try:
+                if audioInput is not None and audioCheckboxTest(audioInput):
+                    audioEnabled = True
+
+                    self.ClickActionObj(audioInput)
+
+                    self.Half()
+
+                    aiObj = edom(audioInput)
+
+                    while not aiObj.get_prop("checked", False) and count < 3:
+                        self.Half()
+                        self.ClickActionObj(audioInput)
+                        count += 1
+                    else:
+                        if count > 2 and not aiObj.get_prop("checked", False):
+                            success = False
+
+                            self.ClickActionObj(cancelBtn)
+
+                            DbgExit(dbgblk, dbglb)
+
+                            return success, reason
+
+                    self.Half()
+
+                    okBtn = self.ByCSS(okBtnCss)
+
+                    self.Half()
+
+                    self.ClickActionObj(okBtn)
+                else:
+                    reason = "not checked"
+
+                    DbgMsg("Cancelling download because audio checkbox is not checked, enabled or invisible", dbglabel=dbglb)
+
+                    success = False
+                    self.Half()
+                    self.ClickActionObj(cancelBtn)
+
+                    self.Half()
+            except ElementClickInterceptedException as err_eci:
+                reason = "Element Click Intercepted Exception"
+                success = False
+            except TimeoutException as err_to:
+                reason = "Checkbox would not check"
+                success = False
+            except Exception as err:
+                ErrMsg(err, "Click to download failed")
+                reason = "Generic Exception Encountered"
+                audioEnabled = False
+                success = False
 
         DbgExit(dbgblk, dbglb)
 
@@ -2131,7 +2159,7 @@ class ASCBrowser(Browser):
                 success, reason = self.BeginDownload()
 
                 if not success:
-                    global_temp = (f"save failed : {reason}", rowkey)
+                    global_temp = (f"Save failed : {reason}", rowkey)
 
                     success = False
                     voice_recording.AddToBad()
@@ -2161,7 +2189,6 @@ class ASCBrowser(Browser):
                     recording.data["Archived"] = "Damaged/Not Archived"
                     recording.data["Expanded"] = "Warning received before download"
                     AppendRows(catalogFilename, recording.data)
-
         except Exception as err:
             # check rowkey and list of rows
             Msg(f"Could not activate row with rowkey {rowkey} : {err}")
@@ -2385,12 +2412,14 @@ class ASCBrowser(Browser):
 
                 # Get Items on current page with retry
                 while len(recordings) == 0 and retries < 3:
-                    recordings = self.GetData(self.mainFrame)
+                    recordings, no_records = self.GetData(self.mainFrame)
 
-                    if len(recordings) == 0:
+                    if len(recordings) == 0 and not no_records:
                         DbgMsg(f"Retrying to get rows from current search page : {retries}", dbglabel=ph.Informational)
                         retries += 1
                         self.Quarter()
+                    elif no_records:
+                        break
 
                 skipped = 0
                 not_skipped = 0
@@ -2624,7 +2653,7 @@ class VoiceDownload:
 
         success = True
 
-        downloads = browser.GetDownloads(None, sleep_time)
+        downloads = browser.GetDownloads(sleep_time)
 
         if len(downloads) == 0:
             success = False
