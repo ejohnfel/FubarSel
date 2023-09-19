@@ -1711,7 +1711,7 @@ class ASCBrowser(Browser):
 
         stalled = False
 
-        result = self.WaitPresenceCSS(3, saveBoxCss, msg="Waiting for save box")
+        result = self.WaitPresenceCSS(3, saveBoxCss)
 
         if result["present"]:
             timechk = datetime.now()
@@ -1719,7 +1719,7 @@ class ASCBrowser(Browser):
             while result["present"] and not stalled:
                 self.Quarter()
 
-                result = self.WaitPresenceCSS(1, saveBoxCss, msg="Waiting for save box, first shot missed")
+                result = self.WaitPresenceCSS(1, saveBoxCss)
 
                 if result["present"]:
                     time_passed = datetime.now() - timechk
