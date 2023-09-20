@@ -662,6 +662,11 @@ class Browser(SleepShortCuts):
         self.url = url
         self.browser.get(self.url)
 
+    def SwitchToDefault(self):
+        """Switch to Default Content"""
+
+        self.browser.switch_to.default_content()
+
     def SwitchContext(self, window, frame=None):
         """Switch Context, the easy way"""
 
@@ -695,6 +700,33 @@ class Browser(SleepShortCuts):
         ph.NotImplementedYet()
 
         DbgExit(dbgblk, dbglb)
+
+        return success
+
+    def SwitchIFrame(self, name, pause=0):
+        """Switch to IFrame"""
+
+        dbgblk, dbglb = DbgNames(self.SwitchIFrame)
+
+        success = False
+
+        if pause > 0:
+            self.Sleep(pause)
+
+        try:
+            frame = None
+
+            if type(name) is int:
+                frame = name
+            else:
+                frame = self.ByCSS(f"iframe[name='{name}']")
+
+            self.browser.switch_to.frame(frame)
+            success = True
+        except NoSuchFrameException:
+            DbgMsg(f"No such frame {name}", dbglabel=dbglb)
+        except Exception as err:
+            Msg(f"Generic error when trying to switch to iframe {name} : {err}")
 
         return success
 
@@ -758,6 +790,11 @@ class Browser(SleepShortCuts):
         """Switch to tab"""
 
         self.SwitchWindow(tab_handle)
+
+    def NewTabByURL(self, url):
+        """Create New Tab By URL"""
+
+        self.browser.execute_script(f"window.open('{url}', '_blank');")
 
     def NewTab(self, url):
         """Open New Tab"""
@@ -2343,9 +2380,11 @@ class ASCBrowser(Browser):
         moved_forward = True
 
         while page_count < pages and moved_forward:
-            next_btn = self.ByCSS(next_button_css)
+            results = self.WaitPresenceCSS(5, next_button_css)
 
-            if next_btn.get_attribute("class") != next_class_disabled:
+            next_btn = None if results["present"] else results["item"]
+
+            if next_btn is not None and next_btn.get_attribute("class") != next_class_disabled:
                 # More pages of items for this search to download
                 self.ClickActionObj(next_btn)
 
@@ -2368,6 +2407,10 @@ class ASCBrowser(Browser):
                 self.Sleep(2 + adjustment)
 
                 page_count += 1
+            elif next_btn is None:
+                DbgMsg("Next button is NONE for some reason", dbglabel=ph.Informational)
+                if DebugMode():
+                    breakpoint()
             else:
                 moved_forward = False
 
