@@ -1948,7 +1948,7 @@ class ASCBrowser(Browser):
         conditions = {"rowkey": ""}
 
         try:
-            if self.PopoutPresent(60):
+            if self.PopoutPresent(5):
                 self.ClosePopOut(self.mainFrame)
 
             self.DoubleClickActionObj(row)
