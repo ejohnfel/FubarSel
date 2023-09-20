@@ -330,41 +330,31 @@ class SleepShortCuts:
         await asyncio.sleep(sleep_time)
 
 
-class Browser(SleepShortCuts):
-    """Browser Instance Class"""
+class SeleniumBase:
+    """Selenium Base Functions"""
 
-    browser = None
-    options = None
+    driver = None
 
-    downloadPath = None
+    def __init__(self, driver=None):
+        """Init Instance"""
 
-    url = None
-    session_id = None
-
-    def __init__(self, url, download_path):
-        """Initialize Instance"""
-
-        self.downloadPath = download_path
-
-        self.options = self.DownloadOptions(download_path)
-        self.browser = webdriver.Chrome(options=self.options)
-        self.Get(url)
+        self.driver = driver
 
     def Quit(self):
         """Quit Browser"""
 
-        if self.browser is not None:
-            self.browser.quit()
+        if self.driver is not None:
+            self.driver.quit()
 
     def Maximize(self):
         """Maximize Browser Windows Helper"""
 
-        self.browser.maximize_window()
+        self.driver.maximize_window()
 
     def Refresh(self):
         """Refresh Browser Window"""
 
-        self.browser.refresh()
+        self.driver.refresh()
 
     def Reconnect(self):
         """Reconnect to lost session"""
@@ -377,35 +367,33 @@ class Browser(SleepShortCuts):
 
         browser2.session_id = self.session_id
 
-        self.browser = browser2
+        self.driver = browser2
 
     def Alert(self):
         """Return Alert Object"""
 
-        return Alert(self.browser)
+        return Alert(self.driver)
 
     def Windows(self):
         """Show all window ID's and currently selected window"""
 
         Msg("All Window Handles\n==================")
-        for handle in self.browser.window_handles:
+        for handle in self.driver.window_handles:
             Msg(handle)
 
-        Msg(f"Present Window : {self.browser.current_window_handle}")
+        Msg(f"Present Window : {self.driver.current_window_handle}")
 
-    def ByType(self, searchType, path, msg="None"):
-        """Search Single By Supplied Type"""
+    def ByType(self, by, path):
+        """Search Single By Supplied Type with Exception Debug"""
 
         dbgblk, dbglb = DbgNames(self.ByType)
 
         DbgEnter(dbgblk, dbglb)
 
-        DbgMsg(f"Searching for : {path} / {msg}", dbglabel=dbglb)
-
         item = None
 
         try:
-            if searchType == By.CSS_SELECTOR:
+            if by == By.CSS_SELECTOR:
                 item = self.ByCSS(path)
             else:
                 item = self.ByXPATH(path)
@@ -433,7 +421,7 @@ class Browser(SleepShortCuts):
         err = None
 
         try:
-            element = self.browser.find_element_by_id(id)
+            element = self.driver.find_element_by_id(id)
         except TimeoutException as err_toe:
             DbgMsg("Timeout reached exception", dbglabel=dbglb)
             err = err_toe
@@ -451,20 +439,28 @@ class Browser(SleepShortCuts):
 
         return element, err
 
-    def ByCSS(self, css, msg=''):
+    def FindElement(self, by, value):
+        """Traditional Find Element"""
+
+        return self.driver.find_element(by, value)
+
+    def FindElements(self, by, value):
+        """Traditional Find Elements"""
+
+        return self.driver.find_elements(by, value)
+
+    def ByCSS(self, css):
         """Get By CSS Shortcut"""
 
         dbgblk, dbglb = DbgNames(self.ByCSS)
 
         DbgEnter(dbgblk, dbglb)
 
-        DbgMsg(f"Searching for : {css} / {msg}", dbglabel=dbglb)
-
         element = None
         err = None
 
         try:
-            element = self.browser.find_element(By.CSS_SELECTOR, css)
+            element = self.FindElement(By.CSS_SELECTOR, css)
         except TimeoutException as err_toe:
             DbgMsg("Timeout reached exception", dbglabel=dbglb)
             err = err_toe
@@ -506,19 +502,17 @@ class Browser(SleepShortCuts):
 
         return item
 
-    def MultiByCSS(self, css, msg=''):
+    def MultiByCSS(self, css):
         """Multi Get By CSS Shortcut"""
 
         dbgblk, dbglb = DbgNames(self.MultiByCSS)
 
         DbgEnter(dbgblk, dbglb)
 
-        DbgMsg(f"Searching for : {css} / {msg}", dbglabel=dbglb)
-
         items = list()
 
         try:
-            items = self.browser.find_elements(By.CSS_SELECTOR, css)
+            items = self.FindElements(By.CSS_SELECTOR, css)
         except TimeoutException:
             Msg("Timeout reached exception")
         except NoSuchElementException:
@@ -556,19 +550,17 @@ class Browser(SleepShortCuts):
 
         return items
 
-    def ByXPATH(self, xpath, msg=''):
+    def ByXPATH(self, xpath):
         """Get By XPATH Shortcut"""
 
         dbgblk, dbglb = DbgNames(self.ByXPATH)
 
         DbgEnter(dbgblk, dbglb)
 
-        DbgMsg(f"Searching for : {xpath} / {msg}", dbglabel=dbglb)
-
         item = None
 
         try:
-            item = self.browser.find_element(By.XPATH, xpath)
+            item = self.FindElement(By.XPATH, xpath)
         except TimeoutException:
             Msg("Timeout reached exception")
         except NoSuchElementException:
@@ -606,19 +598,17 @@ class Browser(SleepShortCuts):
 
         return item
 
-    def MultiByXPATH(self, xpath, msg=''):
+    def MultiByXPATH(self, xpath):
         """Multi Get By XPATH Shortcut"""
 
         dbgblk, dbglb = DbgNames(self.MultiByXPATH)
 
         DbgEnter(dbgblk, dbglb)
 
-        DbgMsg(f"Searching for : {xpath} / {msg}", dbglabel=dbglb)
-
         items = list()
 
         try:
-            items = self.browser.find_elements(By.XPATH, xpath)
+            items = self.FindElements(By.XPATH, xpath)
         except TimeoutException:
             Msg("Timeout reached exception")
         except NoSuchElementException:
@@ -660,12 +650,12 @@ class Browser(SleepShortCuts):
         """Get Call on Web Driver"""
 
         self.url = url
-        self.browser.get(self.url)
+        self.driver.get(self.url)
 
     def SwitchToDefault(self):
         """Switch to Default Content"""
 
-        self.browser.switch_to.default_content()
+        self.driver.switch_to.default_content()
 
     def SwitchContext(self, window, frame=None):
         """Switch Context, the easy way"""
@@ -676,9 +666,9 @@ class Browser(SleepShortCuts):
 
         try:
             if window is not None:
-                self.browser.switch_to.window(window)
+                self.driver.switch_to.window(window)
             if frame is not None:
-                self.browser.switch_to.frame(frame)
+                self.driver.switch_to.frame(frame)
         except NoSuchWindowException:
             DbgMsg(f"No such window exception for {window}", dbglabel=dbglb)
         except NoSuchFrameException:
@@ -721,7 +711,7 @@ class Browser(SleepShortCuts):
             else:
                 frame = self.ByCSS(f"iframe[name='{name}']")
 
-            self.browser.switch_to.frame(frame)
+            self.driver.switch_to.frame(frame)
             success = True
         except NoSuchFrameException:
             DbgMsg(f"No such frame {name}", dbglabel=dbglb)
@@ -748,7 +738,7 @@ class Browser(SleepShortCuts):
             else:
                 frame = self.ByCSS(f"frame[name='{name}']")
 
-            self.browser.switch_to.frame(frame)
+            self.driver.switch_to.frame(frame)
             success = True
         except NoSuchFrameException:
             DbgMsg(f"No such frame {name}", dbglabel=dbglb)
@@ -764,20 +754,20 @@ class Browser(SleepShortCuts):
 
         DbgEnter(dbgblk, dbglb)
 
-        self.url = self.browser.command_executor._url
-        self.session_id = self.browser.session_id
+        self.url = self.driver.command_executor._url
+        self.session_id = self.driver.session_id
 
         try:
             try:
                 self.Half()
-                self.browser.switch_to.window(window_handle)
+                self.driver.switch_to.window(window_handle)
             except ConnectionResetError as crst:
                 if DebugMode():
                     DbgMsg("We are disconnected, try to reconnect by stepping", dbglabel=dbglb)
 
                     breakpoint()
                 self.Reconnect()
-                self.browser.switch_to.window(window_handle)
+                self.driver.switch_to.window(window_handle)
         except Exception as err:
             ErrMsg(err, "A problem occurred switching browser windows")
 
@@ -794,18 +784,18 @@ class Browser(SleepShortCuts):
     def NewTabByURL(self, url):
         """Create New Tab By URL"""
 
-        self.browser.execute_script(f"window.open('{url}', '_blank');")
+        self.driver.execute_script(f"window.open('{url}', '_blank');")
 
     def NewTab(self, url):
         """Open New Tab"""
 
-        original_handle = self.browser.current_window_handle
+        original_handle = self.driver.current_window_handle
 
-        self.browser.switch_to.new_window('tab')
+        self.driver.switch_to.new_window('tab')
 
-        tab_handle = self.browser.current_window_handle
+        tab_handle = self.driver.current_window_handle
 
-        self.browser.get(url)
+        self.driver.get(url)
 
         self.SwitchWindow(original_handle)
 
@@ -819,13 +809,13 @@ class Browser(SleepShortCuts):
         DbgEnter(dbgblk, dbglb)
 
         driver_options = self.DownloadOptions(downloadPath)
-        self.browser = webdriver.Chrome(options=driver_options)
+        self.driver = webdriver.Chrome(options=driver_options)
 
         self.Get(url)
 
         DbgExit(dbgblk, dbglb)
 
-        return self.browser
+        return self.driver
 
     def OpenDownloadsTab(self):
         """Open Downloads Tab"""
@@ -834,7 +824,7 @@ class Browser(SleepShortCuts):
 
         DbgEnter(dbgblk, dbglb)
 
-        current_window = self.browser.current_window_handle
+        current_window = self.driver.current_window_handle
 
         tab_handle = self.NewTab("chrome://downloads")
 
@@ -851,30 +841,30 @@ class Browser(SleepShortCuts):
 
         self.SwitchWindow(downloads_tab)
 
-        self.browser.close()
+        self.driver.close()
 
         if switch_to is not None:
             self.SwitchWindow(switch_to)
 
         DbgExit(dbgblk, dbglb)
 
-    def GetDownloads(self, downloadsTab, sleep_time=3):
+    def GetDownloads(self, downloads_tab, sleep_time=3):
         """Get List of Downloads In Download Tab"""
 
         dbgblk, dbglb = DbgNames(self.GetDownloads)
 
         DbgEnter(dbgblk, dbglb)
 
-        originalTab = self.browser.current_window_handle
+        originalTab = self.driver.current_window_handle
 
-        self.SwitchTab(downloadsTab)
+        self.SwitchTab(downloads_tab)
 
         if sleep_time > 0:
             self.Sleep(sleep_time)
 
         downloadsScript = "return document.querySelector('downloads-manager').shadowRoot.querySelectorAll('#downloadsList downloads-item')"
 
-        downloads = self.browser.execute_script(downloadsScript)
+        downloads = self.driver.execute_script(downloadsScript)
 
         downloadDict = dict()
 
@@ -961,7 +951,7 @@ class Browser(SleepShortCuts):
         success = True
 
         try:
-            WebDriverWait(self.browser, timeout, poll_frequency, ignored_exceptions).until(expected_condition)
+            WebDriverWait(self.driver, timeout, poll_frequency, ignored_exceptions).until(expected_condition)
         except TimeoutException:
             success = False
 
@@ -973,7 +963,7 @@ class Browser(SleepShortCuts):
         success = True
 
         try:
-            element = WebDriverWait(self.browser, timeout, poll_frequency, ignored_exceptions).until_not(expected_condition)
+            element = WebDriverWait(self.driver, timeout, poll_frequency, ignored_exceptions).until_not(expected_condition)
         except TimeoutException:
             success = False
 
@@ -985,7 +975,7 @@ class Browser(SleepShortCuts):
         result = None
 
         try:
-            WebDriverWait(self.browser, timeout).until(presence_of_element_located((selector_type, selector)))
+            WebDriverWait(self.driver, timeout).until(presence_of_element_located((selector_type, selector)))
 
             result = self.ByType(selector_type, selector)
         except Exception as err:
@@ -1028,7 +1018,7 @@ class Browser(SleepShortCuts):
         resultset["item"] = None
 
         try:
-            WebDriverWait(self.browser, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
+            WebDriverWait(self.driver, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
             resultset["present"] = True
 
             resultset["item"] = self.ByCSS(selector)
@@ -1059,7 +1049,7 @@ class Browser(SleepShortCuts):
         results = (True, None)
 
         try:
-            WebDriverWait(self.browser, timeout).until(visibility_of_element_located((By.CSS_SELECTOR, selector)))
+            WebDriverWait(self.driver, timeout).until(visibility_of_element_located((By.CSS_SELECTOR, selector)))
         except TimeoutException as t_err:
             results = (False, t_err)
         except NoSuchElementException as ns_err:
@@ -1084,7 +1074,7 @@ class Browser(SleepShortCuts):
         results = (True, None)
 
         try:
-            WebDriverWait(self.browser, timeout).until(element_to_be_clickable((By.CSS_SELECTOR, selector))).click()
+            WebDriverWait(self.driver, timeout).until(element_to_be_clickable((By.CSS_SELECTOR, selector))).click()
         except TimeoutException as t_err:
             results = (False, t_err)
         except NoSuchElementException as ns_err:
@@ -1102,26 +1092,26 @@ class Browser(SleepShortCuts):
     def ScrollIntoView(self, element):
         """Scroll Element Into View"""
 
-        self.browser.execute_script("arguments[0].scrollIntoView(true);", element)
+        self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
 
     def ClickActionCSS(self, selector):
         """Use Action to Click Element By CSS Selector"""
 
         element = self.ByCSS(selector)
 
-        ActionChains(self.browser).move_to_element(element).click(element).perform()
+        ActionChains(self.driver).move_to_element(element).click(element).perform()
 
     def ClickActionXPATH(self, selector):
         """Use Action to Click Element By XPATH Selector"""
 
         element = self.ByXPATH(selector)
 
-        ActionChains(self.browser).move_to_element(element).click(element).perform()
+        ActionChains(self.driver).move_to_element(element).click(element).perform()
 
     def ClickActionObj(self, element):
         """Use Action to Click Web Element"""
 
-        ActionChains(self.browser).move_to_element(element).click(element).perform()
+        ActionChains(self.driver).move_to_element(element).click(element).perform()
 
     def ClickAction(self, item):
         """Use Action to Click Element, By CSS, XPATH or WebObject"""
@@ -1141,26 +1131,26 @@ class Browser(SleepShortCuts):
         else:
             element = item
 
-        ActionChains(self.browser).move_to_element(element).click(element).perform()
+        ActionChains(self.driver).move_to_element(element).click(element).perform()
 
     def JClickActionCSS(self, selector):
         """Java Click Action by CSS Selector"""
 
         element = self.ByCSS(selector)
 
-        self.browser.execute_script("arguments[0].click()", element)
+        self.driver.execute_script("arguments[0].click()", element)
 
     def JClickActionXPATH(self, selector):
         """Java Click Action by XPATH Selector"""
 
         element = self.ByXPATH(selector)
 
-        self.browser.execute_script("arguments[0].click()", element)
+        self.driver.execute_script("arguments[0].click()", element)
 
     def JClickActionObj(self, element):
         """Java Click Action On Web Element"""
 
-        self.browser.execute_script("arguments[0].click()", element)
+        self.driver.execute_script("arguments[0].click()", element)
 
     def JClickAction(self, item):
         """Java Click Action by CSS, XPATH or Web Element"""
@@ -1180,26 +1170,26 @@ class Browser(SleepShortCuts):
         else:
             element = item
 
-        self.browser.execute_script("arguments[0].click()", element)
+        self.driver.execute_script("arguments[0].click()", element)
 
     def DoubleClickActionCSS(self, selector):
         """Use Action to Click Element By CSS Selector"""
 
         element = self.ByCSS(selector)
 
-        ActionChains(self.browser).move_to_element(element).double_click().perform()
+        ActionChains(self.driver).move_to_element(element).double_click().perform()
 
     def DoubleClickActionXPATH(self, selector):
         """Use Action to Click Element By XPATH Selector"""
 
         element = self.ByXPATH(selector)
 
-        ActionChains(self.browser).move_to_element(element).double_click().perform()
+        ActionChains(self.driver).move_to_element(element).double_click().perform()
 
     def DoubleClickActionObj(self, element):
         """Use Action to Click Element On Web Element"""
 
-        ActionChains(self.browser).move_to_element(element).double_click().perform()
+        ActionChains(self.driver).move_to_element(element).double_click().perform()
 
     def DoubleClickAction(self, item):
         """Use Action to Click Element By CSS, XPATH or Web Element"""
@@ -1219,14 +1209,84 @@ class Browser(SleepShortCuts):
         else:
             element = item
 
-        ActionChains(self.browser).move_to_element(element).double_click().perform()
+        ActionChains(self.driver).move_to_element(element).double_click().perform()
 
     def ReadyState(self):
         """Check if ReadyState Complete"""
 
-        response = self.browser.execute_script("return document.readyState")
+        response = self.driver.execute_script("return document.readyState")
 
         return response == "complete"
+
+class Browser(SeleniumBase, SleepShortCuts):
+    """Browser Instance Class"""
+
+    options = None
+
+    downloadPath = None
+
+    url = None
+    session_id = None
+
+    def __init__(self, url, download_path):
+        """Initialize Instance"""
+
+        self.downloadPath = download_path
+
+        self.options = self.DownloadOptions(download_path)
+        self.driver = webdriver.Chrome(options=self.options)
+        self.Get(url)
+
+
+class BaseElement(SeleniumBase):
+    """Base Web Element"""
+
+    value = None
+    by = None
+    locator = None
+    element = None
+
+    def __init__(self, driver, value, by, wait=10):
+        """Init BaseElement"""
+
+        self.driver = driver
+        self.value = value
+        self.by = by
+        self.locator = (self.by, self.value)
+
+        self.find(wait)
+
+    def find(self, wait=0):
+        """Find Element"""
+
+        if wait > 0:
+            self.element = WebDriverWait(
+                self.driver, wait).until(visibility_of_element_located(self.locator))
+        else:
+            self.element = self.driver.find_element(self.by, self.value)
+
+        return self.element
+
+    def click(self, wait=10):
+        """Click"""
+
+        element = WebDriverWait(self.driver, wait).until(element_to_be_clickable(self.locator))
+
+        self.ClickActionObj(self.element)
+
+    @property
+    def text(self):
+        """Get Text From Element"""
+
+        text = self.element.text
+
+        return text
+
+    @text.setter
+    def text(self, value):
+        """Set Text"""
+
+        self.element.text = value
 
 
 class ASCBrowser(Browser):
@@ -1251,7 +1311,7 @@ class ASCBrowser(Browser):
 
         DbgEnter(dbgblk, dbglb)
 
-        self.ascTab = self.browser.current_window_handle
+        self.ascTab = self.driver.current_window_handle
         self.mainFrame = frame
 
         DbgExit(dbgblk, dbglb)
@@ -1264,14 +1324,14 @@ class ASCBrowser(Browser):
         DbgEnter(dbgblk, dbglb)
 
         driver_options = self.DownloadOptions(downloadPath)
-        self.browser = webdriver.Chrome(options=driver_options)
+        self.driver = webdriver.Chrome(options=driver_options)
 
         self.Get(start_url)
 
         if self.SmartLogin(username, password):
             DbgExit(dbgblk, dbglb)
 
-            return self.browser
+            return self.driver
 
         DbgExit(dbgblk, dbglb)
 
@@ -1284,7 +1344,7 @@ class ASCBrowser(Browser):
 
         DbgEnter(dbgblk, dbglb)
 
-        current_window = self.browser.current_window_handle
+        current_window = self.driver.current_window_handle
 
         tab_handle = self.NewTab("chrome://downloads")
 
@@ -1399,13 +1459,13 @@ class ASCBrowser(Browser):
 
         spanobj = self.ByCSS(span)
 
-        WebDriverWait(self.browser, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
+        WebDriverWait(self.driver, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
 
         logoffAnchor = self.ByCSS(anchorID)
 
         self.ClickActionObj(spanobj)
 
-        WebDriverWait(self.browser, 30).until(visibility_of(logoffAnchor))
+        WebDriverWait(self.driver, 30).until(visibility_of(logoffAnchor))
 
         self.ClickActionObj(logoffAnchor)
 
@@ -1415,7 +1475,7 @@ class ASCBrowser(Browser):
         """Fast Quit"""
 
         self.SmartLogout()
-        self.browser.quit()
+        self.driver.quit()
 
         sys.exit(-1)
 
@@ -1443,7 +1503,7 @@ class ASCBrowser(Browser):
                     # aria-hidden=true, aria-live=off, class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container ajaxStatusDialog"
                     # style=width: auto; height: auto; left: 649px; top: 600.5px; z-index: 1039; display: none;
 
-                    self.browser.execute_script("document.getElementById('statusDialogId').style.display='none';")
+                    self.driver.execute_script("document.getElementById('statusDialogId').style.display='none';")
 
                     self.Half()
 
@@ -1718,7 +1778,7 @@ class ASCBrowser(Browser):
         pauseBtn = self.ByCSS(pauseBtnCss)
 
         try:
-            WebDriverWait(self.browser, timeout).until(visibility_of(pauseBtn))
+            WebDriverWait(self.driver, timeout).until(visibility_of(pauseBtn))
 
             self.ClickActionObj(pauseBtn)
         except TimeoutException:
@@ -1960,7 +2020,7 @@ class ASCBrowser(Browser):
             try:
                 # Set Select box
                 sbox = self.ByCSS("select[id='conversationObjectView:j_idt132:searchdatatable:0:searchMenu']")
-                WebDriverWait(self.browser, 5).until(visibility_of(sbox))
+                WebDriverWait(self.driver, 5).until(visibility_of(sbox))
 
                 select = Select(sbox)
                 # Set "between", then set dates. VALUE = "BETWEEN"
@@ -1976,10 +2036,10 @@ class ASCBrowser(Browser):
             closeAnchor = self.ByCSS(closeAnchorCss)
 
             try:
-                WebDriverWait(self.browser, 5).until(presence_of_element_located(
+                WebDriverWait(self.driver, 5).until(presence_of_element_located(
                     (By.CSS_SELECTOR,
                      "input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarOne_input']")))
-                WebDriverWait(self.browser, 5).until(presence_of_element_located(
+                WebDriverWait(self.driver, 5).until(presence_of_element_located(
                     (By.CSS_SELECTOR,
                      "input[id='conversationObjectView:j_idt132:searchdatatable:0:betweenCalendarTwo_input']")))
 
@@ -3487,7 +3547,7 @@ def GetFolder(folder=downloadPath):
 
 
 def ClearZips(folder):
-    """Celar Zips from Folder"""
+    """Clear Zips from Folder"""
 
     items = GetFolder(folder)
 
@@ -3661,7 +3721,7 @@ def GetTSA(url):
     browser.ClickActionObj(button1)
 
     # alert = browser.switch_to.alert
-    alert = Alert(browser.browser)
+    alert = Alert(browser.driver)
     alert.accept()
 
     # Example XPath
