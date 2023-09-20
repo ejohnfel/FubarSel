@@ -1218,6 +1218,7 @@ class SeleniumBase:
 
         return response == "complete"
 
+
 class Browser(SeleniumBase, SleepShortCuts):
     """Browser Instance Class"""
 
@@ -1947,7 +1948,7 @@ class ASCBrowser(Browser):
         conditions = {"rowkey": ""}
 
         try:
-            if self.PopoutPresent(10):
+            if self.PopoutPresent(60):
                 self.ClosePopOut(self.mainFrame)
 
             self.DoubleClickActionObj(row)
@@ -2145,7 +2146,7 @@ class ASCBrowser(Browser):
 
         # Will Bring up dialog
         audioInputDis = None
-        audioInput = self.ByCSS(mediaSrcsAudioCss, msg="AKA mediaSources Inputbox")
+        audioInput = self.ByCSS(mediaSrcsAudioCss)
         cancelBtn = self.ByCSS(cancelBtnCss)
 
         if audioInput is None:
