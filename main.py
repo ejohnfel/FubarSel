@@ -2382,7 +2382,7 @@ class ASCBrowser(Browser):
         while page_count < pages and moved_forward:
             results = self.WaitPresenceCSS(5, next_button_css)
 
-            next_btn = None if results["present"] else results["item"]
+            next_btn = results["item"] if results["present"] else None
 
             if next_btn is not None and next_btn.get_attribute("class") != next_class_disabled:
                 # More pages of items for this search to download
