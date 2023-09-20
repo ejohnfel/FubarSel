@@ -2440,8 +2440,14 @@ class ASCBrowser(Browser):
 
         moved_forward = True
 
+        self.MainContext()
+
         while page_count < pages and moved_forward:
-            results = self.WaitPresenceCSS(5, next_button_css)
+            results = self.WaitPresenceCSS(30, next_button_css)
+
+            if not results["present"] and DebugMode():
+                DbgMsg("Next button is NONE for some reason", dbglabel=ph.Informational)
+                breakpoint()
 
             next_btn = results["item"] if results["present"] else None
 
@@ -2470,8 +2476,7 @@ class ASCBrowser(Browser):
                 page_count += 1
             elif next_btn is None:
                 DbgMsg("Next button is NONE for some reason", dbglabel=ph.Informational)
-                if DebugMode():
-                    breakpoint()
+                moved_forward = False
             else:
                 moved_forward = False
 
