@@ -3243,18 +3243,18 @@ class TrialPage(Browser):
 
     url = "https://techstepacademy.com/trial-of-the-stones"
 
-    input1Locator = Locator("input#r1Input", By.CSS_SELECTOR)
-    button1Locator = Locator("button#r1Btn", By.CSS_SELECTOR)
-    input2Locator = Locator("input#r2Input", By.CSS_SELECTOR)
-    button2Locator = Locator("button#r2Butn", By.CSS_SELECTOR)
-    passwordBannerLocator = Locator("div#passwordBanner > h4", By.CSS_SELECTOR)
-    successBanner1Locator = Locator("div#successBanner1 > h4", By.CSS_SELECTOR)
-    merchantsLocator = Locator("//div/span/b", By.XPATH)
-    input3Locator = Locator("input#r3Input", By.CSS_SELECTOR)
-    successBanner2Locator = Locator("div#successBanner2", By.CSS_SELECTOR)
-    merchantButtonLocator = Locator("button#r3Butn", By.CSS_SELECTOR)
-    checkButtonLocator = Locator("button#checkButn", By.CSS_SELECTOR)
-    trialStatusLocator = Locator("div#trialCompleteBanner > h4", By.CSS_SELECTOR)
+    input1Locator = Locator(By.CSS_SELECTOR, "input#r1Input")
+    button1Locator = Locator(By.CSS_SELECTOR, "button#r1Btn")
+    input2Locator = Locator(By.CSS_SELECTOR, "input#r2Input")
+    button2Locator = Locator(By.CSS_SELECTOR, "button#r2Butn")
+    passwordBannerLocator = Locator(By.CSS_SELECTOR, "div#passwordBanner > h4")
+    successBanner1Locator = Locator(By.CSS_SELECTOR, "div#successBanner1 > h4")
+    merchantsLocator = Locator(By.XPATH, "//div/span/b")
+    input3Locator = Locator(By.CSS_SELECTOR, "input#r3Input")
+    successBanner2Locator = Locator(By.CSS_SELECTOR, "div#successBanner2")
+    merchantButtonLocator = Locator(By.CSS_SELECTOR, "button#r3Butn")
+    checkButtonLocator = Locator(By.CSS_SELECTOR, "button#checkButn")
+    trialStatusLocator = Locator(By.CSS_SELECTOR, "div#trialCompleteBanner > h4")
 
     def __init__(self, driver=None):
 
