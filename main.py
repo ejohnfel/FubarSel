@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 import time
 import inspect
 import functools
+from lxml import etree
 import ait
 import py_helper as ph
 
@@ -1220,6 +1221,12 @@ class SeleniumBase:
         response = self.driver.execute_script("return document.readyState")
 
         return response == "complete"
+
+    @property
+    def PageSource(self):
+        """Get Page Source"""
+
+        return self.driver.page_source
 
 
 class Browser(SeleniumBase, SleepShortCuts):
@@ -3911,6 +3918,7 @@ def GetStonesPageObject():
     input()
     trial_page.Quit()
 
+
 def GetStones(url):
     """Tech Step Academy - Trial of the Stones Challenge"""
 
@@ -3995,6 +4003,21 @@ def GetStones(url):
     browser.Quit()
 
 
+def eTree_Example():
+    """eTree Example"""
+
+    browser = Browser("https://techstepacademy.com/trial-of-the-stones", None)
+
+    tree = etree.HTML(browser.driver.page_source)
+    divs = tree.findall(".//div/span/..")
+
+    for div in divs:
+        merchant_name = div.find("./span/b").text
+        wealth = int(div.find("./p").text)
+
+        print(merchant_name, wealth)
+
+
 def BuildParser():
     """Build Parser"""
 
@@ -4056,7 +4079,9 @@ def testmode():
     DebugMode(True)
     CmdLineMode(True)
 
-    breakpoint()
+    eTree_Example()
+
+    input()
 
 
 if __name__ == '__main__':
