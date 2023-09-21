@@ -3245,6 +3245,15 @@ class edom(object):
         return result
 
 
+class Listing:
+    """Merchant Listing"""
+
+    def __init__(self, element):
+        """Initialize Instant"""
+
+        self.name = element.find("./span/b").text
+        self.wealth = int(element.find("./p").text)
+
 class TrialPage(Browser):
     """Trial of the Stones Page Object"""
 
@@ -3326,6 +3335,21 @@ class TrialPage(Browser):
             merchants[name] = money
 
         return merchants
+
+    def get_merchant_listings(self):
+        xpath = ".//div/span/.."
+
+        self.tree = etree.HTML(self.PageSource)
+
+        divs = self.tree.findall(xpath)
+
+        return [Listing(div) for div in divs]
+
+    @staticmethod
+    def sort_listings(listings):
+        """Sort Listings"""
+
+        return sorted(listings, key=lambda x: x.wealth, reverse=True)
 
     @property
     def richest_merchant(self):
@@ -3895,6 +3919,9 @@ def GetStonesPageObject():
 
         merchants = trial_page.merchants
 
+        listings = trial_page.get_merchant_listings()
+        sorted_listings = trial_page.sort_listings(listings)
+
         item = None
 
         for merchant in merchants.items():
@@ -3903,6 +3930,8 @@ def GetStonesPageObject():
             elif merchant[1] > item[1]:
                 item = merchant
         else:
+            Msg(f"Selected Merchant was {item[0]}/{item[1]}")
+            Msg(f"Compared to listings {sorted_listings[0].name}/{sorted_listings[0].wealth}")
             trial_page.richest_merchant.text = item[0]
 
         trial_page.merchant_button.click()
