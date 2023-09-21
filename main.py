@@ -5,6 +5,7 @@ import os
 import sys
 import argparse
 import configparser
+from collections import namedtuple
 import shutil
 import platform
 import csv
@@ -47,6 +48,8 @@ downloadPathPackt = r"Y:\media\eBooks\Packt\freebies"
 downloadPath = None
 
 ConfigFile = "config.txt"
+
+Locator = namedtuple("Locator", ["by", "value"])
 
 config = None
 
@@ -1242,19 +1245,14 @@ class Browser(SeleniumBase, SleepShortCuts):
 class BaseElement(SeleniumBase):
     """Base Web Element"""
 
-    value = None
-    by = None
     locator = None
     element = None
 
-    def __init__(self, driver, value, by, wait=10):
+    def __init__(self, driver, locator, wait=10):
         """Init BaseElement"""
 
         self.driver = driver
-        self.value = value
-        self.by = by
-        self.locator = (self.by, self.value)
-
+        self.locator = locator
         self.find(wait)
 
     def find(self, wait=0):
@@ -1264,7 +1262,7 @@ class BaseElement(SeleniumBase):
             self.element = WebDriverWait(
                 self.driver, wait).until(visibility_of_element_located(self.locator))
         else:
-            self.element = self.driver.find_element(self.by, self.value)
+            self.element = self.driver.find_element(self.locator.by, self.locator.value)
 
         return self.element
 
@@ -3245,6 +3243,19 @@ class TrialPage(Browser):
 
     url = "https://techstepacademy.com/trial-of-the-stones"
 
+    input1Locator = Locator("input#r1Input", By.CSS_SELECTOR)
+    button1Locator = Locator("button#r1Btn", By.CSS_SELECTOR)
+    input2Locator = Locator("input#r2Input", By.CSS_SELECTOR)
+    button2Locator = Locator("button#r2Butn", By.CSS_SELECTOR)
+    passwordBannerLocator = Locator("div#passwordBanner > h4", By.CSS_SELECTOR)
+    successBanner1Locator = Locator("div#successBanner1 > h4", By.CSS_SELECTOR)
+    merchantsLocator = Locator("//div/span/b", By.XPATH)
+    input3Locator = Locator("input#r3Input", By.CSS_SELECTOR)
+    successBanner2Locator = Locator("div#successBanner2", By.CSS_SELECTOR)
+    merchantButtonLocator = Locator("button#r3Butn", By.CSS_SELECTOR)
+    checkButtonLocator = Locator("button#checkButn", By.CSS_SELECTOR)
+    trialStatusLocator = Locator("div#trialCompleteBanner > h4", By.CSS_SELECTOR)
+
     def __init__(self, driver=None):
 
         if driver is not None:
@@ -3262,51 +3273,49 @@ class TrialPage(Browser):
     def stone_input(self):
         """Get Stone Input"""
 
-        return BaseElement(self.driver, "input#r1Input", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.input1Locator)
 
     @property
     def stone_button(self):
         """Get Stone Button"""
 
-        return BaseElement(self.driver, "button#r1Btn", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.button1Locator)
 
     @property
     def secrets_input(self):
         """Secrets Input Box"""
 
-        return BaseElement(self.driver, "input#r2Input", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.input2Locator)
 
     @property
     def secrets_button(self):
         """Secrets Button"""
 
-        return BaseElement(self.driver, "button#r2Butn", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.button2Locator)
 
     @property
     def password(self):
         """Get Password"""
 
-        return BaseElement(self.driver, "div#passwordBanner > h4", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.passwordBannerLocator)
 
     @property
     def success(self):
         """Success Notice"""
 
-        return BaseElement(self.driver, "div#successBanner1 > h4", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.successBanner1Locator)
 
     @property
     def merchants(self):
         """Get Merchants"""
 
-        xpath = "//div/span/b"
-
-        elements = self.MultiByXPATH(xpath)
+        elements = self.MultiByXPATH(self.merchantsLocator.value)
 
         merchants = dict()
 
         for element in elements:
             name = element.text
-            money = int(self.ByXPATH(f"{xpath}[text()='{name}']/../../p").text)
+            money = int(self.ByXPATH(f"{self.merchantsLocator.value}[text()='{name}']/../../p").text)
             merchants[name] = money
 
         return merchants
@@ -3315,31 +3324,31 @@ class TrialPage(Browser):
     def richest_merchant(self):
         """Get Richest Merchant Input Box"""
 
-        return BaseElement(self.driver, "input#r3Input", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.input3Locator)
 
     @property
     def richest_success(self):
         """Get Richest Person Answer Status"""
 
-        return BaseElement(self.driver, "div#successBanner2", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.successBanner2Locator)
 
     @property
     def merchant_button(self):
         """Get Richest Merchant Answer Button"""
 
-        return BaseElement(self.driver, "button#r3Butn", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.merchantButtonLocator)
 
     @property
     def check_button(self):
         """Get Check Answers Button"""
 
-        return BaseElement(self.driver, "button#checkButn", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.checkButtonLocator)
 
     @property
     def trial_status(self):
         """Get Trial Status"""
 
-        return BaseElement(self.driver, "div#trialCompleteBanner > h4", By.CSS_SELECTOR)
+        return BaseElement(self.driver, self.trialStatusLocator)
 
 # Variables
 
