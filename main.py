@@ -1273,7 +1273,7 @@ class BaseElement(SeleniumBase):
 
         element = WebDriverWait(self.driver, wait).until(element_to_be_clickable(self.locator))
 
-        self.ClickActionObj(self.element)
+        self.ClickActionObj(element)
 
     @property
     def text(self):
@@ -1287,7 +1287,19 @@ class BaseElement(SeleniumBase):
     def text(self, value):
         """Set Text"""
 
-        self.element.text = value
+        self.element.send_keys(value)
+
+    @property
+    def innerText(self):
+        """Get Inner Test"""
+
+        return self.element.get_property("innerText")
+
+    @innerText.setter
+    def innerText(self, value):
+        """Set Inner Text"""
+
+        self.element.set_property("innerText", value)
 
 
 class ASCBrowser(Browser):
@@ -3228,6 +3240,107 @@ class edom(object):
         return result
 
 
+class TrialPage(Browser):
+    """Trial of the Stones Page Object"""
+
+    url = "https://techstepacademy.com/trial-of-the-stones"
+
+    def __init__(self, driver=None):
+
+        if driver is not None:
+            self.driver = driver
+            self.go()
+        else:
+            super().__init__(self.url, None)
+
+    def go(self):
+        """Go to URL"""
+
+        self.Get(self.url)
+
+    @property
+    def stone_input(self):
+        """Get Stone Input"""
+
+        return BaseElement(self.driver, "input#r1Input", By.CSS_SELECTOR)
+
+    @property
+    def stone_button(self):
+        """Get Stone Button"""
+
+        return BaseElement(self.driver, "button#r1Btn", By.CSS_SELECTOR)
+
+    @property
+    def secrets_input(self):
+        """Secrets Input Box"""
+
+        return BaseElement(self.driver, "input#r2Input", By.CSS_SELECTOR)
+
+    @property
+    def secrets_button(self):
+        """Secrets Button"""
+
+        return BaseElement(self.driver, "button#r2Butn", By.CSS_SELECTOR)
+
+    @property
+    def password(self):
+        """Get Password"""
+
+        return BaseElement(self.driver, "div#passwordBanner > h4", By.CSS_SELECTOR)
+
+    @property
+    def success(self):
+        """Success Notice"""
+
+        return BaseElement(self.driver, "div#successBanner1 > h4", By.CSS_SELECTOR)
+
+    @property
+    def merchants(self):
+        """Get Merchants"""
+
+        xpath = "//div/span/b"
+
+        elements = self.MultiByXPATH(xpath)
+
+        merchants = dict()
+
+        for element in elements:
+            name = element.text
+            money = int(self.ByXPATH(f"{xpath}[text()='{name}']/../../p").text)
+            merchants[name] = money
+
+        return merchants
+
+    @property
+    def richest_merchant(self):
+        """Get Richest Merchant Input Box"""
+
+        return BaseElement(self.driver, "input#r3Input", By.CSS_SELECTOR)
+
+    @property
+    def richest_success(self):
+        """Get Richest Person Answer Status"""
+
+        return BaseElement(self.driver, "div#successBanner2", By.CSS_SELECTOR)
+
+    @property
+    def merchant_button(self):
+        """Get Richest Merchant Answer Button"""
+
+        return BaseElement(self.driver, "button#r3Butn", By.CSS_SELECTOR)
+
+    @property
+    def check_button(self):
+        """Get Check Answers Button"""
+
+        return BaseElement(self.driver, "button#checkButn", By.CSS_SELECTOR)
+
+    @property
+    def trial_status(self):
+        """Get Trial Status"""
+
+        return BaseElement(self.driver, "div#trialCompleteBanner > h4", By.CSS_SELECTOR)
+
 # Variables
 
 dynBreak = DynamicBreakpoint()
@@ -3748,6 +3861,47 @@ def GetTSA(url):
     browser.Quit()
 
 
+def GetStonesPageObject():
+    """Get Stones Page Object Method"""
+
+    trial_page = TrialPage()
+
+    trial_page.stone_input.text = "rock"
+    trial_page.stone_button.click()
+
+    password = trial_page.password.innerText
+
+    trial_page.secrets_input.text = password
+    trial_page.secrets_button.click()
+
+    if trial_page.success.innerText == "Success!":
+        # Find the richest merchant
+
+        merchants = trial_page.merchants
+
+        item = None
+
+        for merchant in merchants.items():
+            if item is None:
+                item = merchant
+            elif merchant[1] > item[1]:
+                item = merchant
+        else:
+            trial_page.richest_merchant.text = item[0]
+
+        trial_page.merchant_button.click()
+
+        if trial_page.richest_success.innerText == "Success!":
+            trial_page.check_button.click()
+
+            if trial_page.trial_status.innerText == "Trial Complete":
+                print("You succeeded, congrats")
+    else:
+        print("You failed the trial of the stone")
+
+    input()
+    trial_page.Quit()
+
 def GetStones(url):
     """Tech Step Academy - Trial of the Stones Challenge"""
 
@@ -4073,7 +4227,8 @@ if __name__ == '__main__':
 
         GeteBook(config, downloadPath)
     elif cmd == "stones":
-        GetStones(urls["tsatrial"])
+        GetStonesPageObject()
+        #GetStones(urls["tsatrial"])
     else:
         GetTSA(urls["tsa"])
 
