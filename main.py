@@ -101,6 +101,8 @@ BreakOn = list()
 # List of Events Reported
 EventList = list()
 
+cline = lambda: inspect.getframeinfo(inspect.currentframe()).lineno
+
 # Eventing Stuff
 
 
@@ -1594,6 +1596,11 @@ class ASCBrowser(Browser):
 
         sys.exit(-1)
 
+    def HideBusySpinner(self):
+        """Hide Busy Spinner"""
+
+        self.driver.execute_script("hideStatus();")
+
     def BusySpinnerPresent(self, closeit=False):
         """Detect Busy Spinner"""
 
@@ -1614,7 +1621,7 @@ class ASCBrowser(Browser):
 
                 if closeit:
                     self.Half()
-                    self.driver.execute_script("hideStatus();")
+                    self.HideBusySpinner()
                     self.Half()
         except Exception as err:
             DbgMsg(f"An error occurred : {err}")
@@ -2061,21 +2068,30 @@ class ASCBrowser(Browser):
 
         conditions = {"rowkey": ""}
 
+        line = -1
+
         try:
+            line = cline()
             if self.PopoutPresent(5):
+                line = cline()
                 self.ClosePopOut(self.mainFrame)
 
+            line = cline()
             self.BusySpinnerPresent(True)
 
+            line = cline()
             row = BaseElement(self.driver, Locator(By.XPATH, f"//tr[@data-rk='{rowkey}']"))
 
+            line = cline()
             self.DoubleClickActionObj(row)
 
             self.Second()
 
             time_check = datetime.now()
 
+            line = cline()
             if self.PopoutPresent(60):
+                line = cline()
                 self.ClosePopOut(self.mainFrame)
 
                 duration = datetime.now() - time_check
