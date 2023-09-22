@@ -1405,6 +1405,7 @@ class BaseElement(SeleniumBase):
 
         return self.element.get_attribute(attribute)
 
+
 class ASCBrowser(Browser):
     """ACS Browser Class"""
 
