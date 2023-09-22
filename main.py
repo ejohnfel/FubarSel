@@ -1918,7 +1918,7 @@ class ASCBrowser(Browser):
         if results.element is not None and results.element.displayed and results.element.enabled:
             self.ClickAction(results.element)
         elif results.error[0]:
-            ErrMsg(results.error[2], "An error occurred while trying to pause the player")
+            ErrMsg(results.error[1], "An error occurred while trying to pause the player")
 
         DbgExit(dbgblk, dbglb)
 
