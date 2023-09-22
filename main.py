@@ -1244,44 +1244,42 @@ class SeleniumBase(SleepShortCuts):
 
         self.driver.execute_script("arguments[0].click()", element)
 
+    def DoubleClickAction(self, item, value=None):
+        """Double Click Action By Locator (or other)"""
+
+        element = None
+
+        if type(item) is Locator:
+            element = self.FindElement(item.by, item.value)
+        elif type(item) is WebElement:
+            element = item
+        elif type(item) is BaseElement:
+            element = item.element
+        elif type(item) is str and value is not None:
+            element = self.FindElement(item, value)
+
+        if element is not None:
+            ActionChains(self.driver).move_to_element(element).double_click(element).perform()
+
     def DoubleClickActionCSS(self, selector):
         """Use Action to Click Element By CSS Selector"""
 
-        element = self.ByCSS(selector)
-
-        ActionChains(self.driver).move_to_element(element).double_click().perform()
+        self.DoubleClickAction(Locator(By.CSS_SELECTOR, selector))
 
     def DoubleClickActionXPATH(self, selector):
         """Use Action to Click Element By XPATH Selector"""
 
-        element = self.ByXPATH(selector)
+        self.DoubleClickAction(Locator(By.XPATH, selector))
 
-        ActionChains(self.driver).move_to_element(element).double_click().perform()
+    def DoubleClickActionID(self, selector):
+        """Use Action to Click Element By ID Selector"""
+
+        self.DoubleClickAction(Locator(By.ID, selector))
 
     def DoubleClickActionObj(self, element):
         """Use Action to Click Element On Web Element"""
 
-        ActionChains(self.driver).move_to_element(element).double_click().perform()
-
-    def DoubleClickAction(self, item):
-        """Use Action to Click Element By CSS, XPATH or Web Element"""
-
-        element = None
-
-        if type(item) is str:
-            # This is a bad, minimal, expression for an XPath, but we aren't looking for high accurracy here
-            expr = r"(//.*){1,3}"
-
-            if re.search(expr, item):
-                # Probable XPATH
-                element = self.ByXPATH(item)
-            else:
-                # Probable CSS
-                element = self.ByCSS(item)
-        else:
-            element = item
-
-        ActionChains(self.driver).move_to_element(element).double_click().perform()
+        self.DoubleClickAction(element)
 
     def ReadyState(self):
         """Check if ReadyState Complete"""
@@ -1616,14 +1614,8 @@ class ASCBrowser(Browser):
 
                 if closeit:
                     self.Half()
-                    # Do Something
-                    # aria-hidden=true, aria-live=off, class="ui-dialog ui-widget ui-widget-content ui-corner-all ui-shadow ui-hidden-container ajaxStatusDialog"
-                    # style=width: auto; height: auto; left: 649px; top: 600.5px; z-index: 1039; display: none;
-
-                    self.driver.execute_script("document.getElementById('statusDialogId').style.display='none';")
-
+                    self.driver.execute_script("hideStatus();")
                     self.Half()
-
         except Exception as err:
             DbgMsg(f"An error occurred : {err}")
 
@@ -2056,7 +2048,7 @@ class ASCBrowser(Browser):
 
         return errmsg
 
-    def ActivateRow(self, row, rowkey=None):
+    def ActivateRow(self, rowkey=None):
         """Activate Row"""
 
         dbgblk, dbglb = DbgNames(self.ActivateRow)
@@ -2072,6 +2064,10 @@ class ASCBrowser(Browser):
         try:
             if self.PopoutPresent(5):
                 self.ClosePopOut(self.mainFrame)
+
+            self.BusySpinnerPresent(True)
+
+            row = BaseElement(self.driver, Locator(By.XPATH, f"//tr[@data-rk='{rowkey}']"))
 
             self.DoubleClickActionObj(row)
 
@@ -2381,13 +2377,12 @@ class ASCBrowser(Browser):
             if self.PopoutPresent(3):
                 self.ClosePopOut(frame_name)
 
+            self.BusySpinnerPresent(True)
+
             self.Half()
 
-            rowXPath = f"//tr[@data-rk='{rowkey}']"
-            row = self.ByXPATH(rowXPath)
-
             # Activate Row
-            success, needs_refresh = self.ActivateRow(row, rowkey)
+            success, needs_refresh = self.ActivateRow(rowkey)
 
             self.Half()
 
