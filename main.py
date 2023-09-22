@@ -51,6 +51,7 @@ downloadPath = None
 ConfigFile = "config.txt"
 
 Locator = namedtuple("Locator", ["by", "value"])
+WaitResults = namedtuple("WaitResults", ["element", "timeout", "stale", "no_such_element", "error"])
 
 config = None
 
@@ -334,7 +335,7 @@ class SleepShortCuts:
         await asyncio.sleep(sleep_time)
 
 
-class SeleniumBase:
+class SeleniumBase(SleepShortCuts):
     """Selenium Base Functions"""
 
     driver = None
@@ -926,13 +927,13 @@ class SeleniumBase:
         """Helper for Getting Past Bad Certs"""
 
         adv_btn = self.ByCSS("button[id='details-button']")
-        self.ClickActionObj(adv_btn)
+        self.ClickAction(adv_btn)
 
         self.Half()
 
         anchor = self.ByCSS("div > p > a[id='proceed-link']")
 
-        self.ClickActionObj(anchor)
+        self.ClickAction(anchor)
 
         self.Sleep()
 
@@ -1005,68 +1006,136 @@ class SeleniumBase:
 
         return result
 
-    def WaitPresenceCSS(self, timeout, selector):
+    def WaitPresence(self, locator, timeout=10):
+        """Wait for Something to be Present"""
+
+        dbgblk, dbglb = DbgNames(self.WaitPresence)
+
+        DbgEnter(dbgblk, dbglb)
+
+        resultset = None
+        element = None
+
+        try:
+            element = WebDriverWait(self.driver, timeout).until(presence_of_element_located(locator))
+            resultset = WaitResults(BaseElement(self.driver, element, timeout, locator=locator), False, False, False, (False, None))
+        except TimeoutException as t_err:
+            resultset = WaitResults(None, True, False, False, (True, t_err))
+        except NoSuchElementException as ns_err:
+            resultset = WaitResults(None, False, False, True, (True, ns_err))
+        except StaleElementReferenceException as s_err:
+            resultset = WaitResults(None, False, True, False, (True, s_err))
+        except Exception as err:
+            resultset = WaitResults(None, False, False, False, (True, err))
+            DbgMsg(f"Unexpected exception waiting for {locator.by}/{locator.value} : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return resultset
+
+    def WaitPresenceCSS(self, selector, timeout=10):
         """Wait for Something to be present"""
 
         dbgblk, dbglb = DbgNames(self.WaitPresenceCSS)
 
         DbgEnter(dbgblk, dbglb)
 
-        resultset = dict()
-
-        resultset["present"] = False
-        resultset["timeout"] = False
-        resultset["stale"] = False
-        resultset["nosuchelement"] = False
-        resultset["error"] = (False, None)
-        resultset["item"] = None
-
-        try:
-            WebDriverWait(self.driver, timeout).until(presence_of_element_located((By.CSS_SELECTOR, selector)))
-            resultset["present"] = True
-
-            resultset["item"] = self.ByCSS(selector)
-        except TimeoutException as t_err:
-            resultset["timeout"] = True
-            resultset["error"] = (True, t_err)
-        except NoSuchElementException as ns_err:
-            resultset["nosuchelement"] = True
-            resultset["error"] = (True, ns_err)
-        except StaleElementReferenceException as s_err:
-            resultset["stale"] = True
-            resultset["error"] = (True, s_err)
-        except Exception as err:
-            resultset["error"] = (True, err)
-            DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
+        resultset = self.WaitPresence(Locator(By.CSS_SELECTOR, selector), timeout)
 
         DbgExit(dbgblk, dbglb)
 
         return resultset
 
-    def WaitVisibleCSS(self, selector, timeout=2):
+    def WaitPresenceXPATH(self, selector, timeout=10):
+        """Wait for Something to be present"""
+
+        dbgblk, dbglb = DbgNames(self.WaitPresenceXPATH)
+
+        DbgEnter(dbgblk, dbglb)
+
+        resultset = self.WaitPresence(Locator(By.XPATH, selector), timeout)
+
+        DbgExit(dbgblk, dbglb)
+
+        return resultset
+
+    def WaitPresenceID(self, selector, timeout=10):
+        """Wait for Something to be present"""
+
+        dbgblk, dbglb = DbgNames(self.WaitPresenceID)
+
+        DbgEnter(dbgblk, dbglb)
+
+        resultset = self.WaitPresence(Locator(By.ID, selector), timeout)
+
+        DbgExit(dbgblk, dbglb)
+
+        return resultset
+
+    def WaitVisible(self, locator, timeout=10):
+        """Wait Until an Element Becomes Visible"""
+
+        dbgblk, dbglb = DbgNames(self.WaitVisible)
+
+        DbgEnter(dbgblk, dbglb)
+
+        resultset = None
+
+        try:
+            element = WebDriverWait(self.driver, timeout).until(visibility_of_element_located(locator))
+            resultset = WaitResults(BaseElement(self.driver, element, timeout, locator=locator), False, False, False, (False, None))
+        except TimeoutException as t_err:
+            resultset = WaitResults(None, True, False, False, (True, t_err))
+        except NoSuchElementException as ns_err:
+            resultset = WaitResults(None, False, False, True, (True, ns_err))
+        except StaleElementReferenceException as s_err:
+            resultset = WaitResults(None, False, True, False, (True, s_err))
+        except Exception as err:
+            resultset = WaitResults(None, False, False, False, (True, err))
+            DbgMsg(f"Unexpected exception waiting for {locator.by}/{locator.value} : {err}", dbglabel=dbglb)
+
+        DbgExit(dbgblk, dbglb)
+
+        return resultset
+
+    def WaitVisibleCSS(self, selector, timeout=10):
         """Wait until Element is Visible"""
 
         dbgblk, dbglb = DbgNames(self.WaitVisibleCSS)
 
         DbgEnter(dbgblk, dbglb)
 
-        results = (True, None)
-
-        try:
-            WebDriverWait(self.driver, timeout).until(visibility_of_element_located((By.CSS_SELECTOR, selector)))
-        except TimeoutException as t_err:
-            results = (False, t_err)
-        except NoSuchElementException as ns_err:
-            results = (False, ns_err)
-        except StaleElementReferenceException as s_err:
-            results = (False, s_err)
-        except Exception as err:
-            results = (False, err)
-            DbgMsg(f"Unexpected exception waiting for {selector} : {err}", dbglabel=dbglb)
+        resultset = self.WaitVisible(Locator(By.CSS_SELECTOR, selector), timeout)
 
         DbgExit(dbgblk, dbglb)
 
-        return results
+        return resultset
+
+    def WaitVisibleXPATH(self, selector, timeout=10):
+        """Wait until Element is Visible"""
+
+        dbgblk, dbglb = DbgNames(self.WaitVisibleXPATH)
+
+        DbgEnter(dbgblk, dbglb)
+
+        resultset = self.WaitVisible(Locator(By.XPATH, selector), timeout)
+
+        DbgExit(dbgblk, dbglb)
+
+        return resultset
+
+    def WaitVisibleID(self, selector, timeout=10):
+        """Wait until Element is Visible"""
+
+        dbgblk, dbglb = DbgNames(self.WaitVisibleID)
+
+        DbgEnter(dbgblk, dbglb)
+
+        resultset = self.WaitVisible(Locator(By.ID, selector), timeout)
+
+        DbgExit(dbgblk, dbglb)
+
+        return resultset
 
     def WaitClickableCSS(self, selector, timeout=2):
         """Wait for element to be Clickable"""
@@ -1098,44 +1167,43 @@ class SeleniumBase:
 
         self.driver.execute_script("arguments[0].scrollIntoView(true);", element)
 
+    def ClickAction(self, item, value=None):
+        """Click Action By Locator"""
+
+        element = None
+
+        if type(item) is Locator:
+            element = self.FindElement(item.by, item.value)
+        elif type(item) is WebElement:
+            element = item
+        elif type(item) is BaseElement:
+            element = item.element
+        elif type(item) is str and value is not None:
+            element = self.FindElement(item, value)
+
+        if element is not None:
+            ActionChains(self.driver).move_to_element(element).click(element).perform()
+
     def ClickActionCSS(self, selector):
         """Use Action to Click Element By CSS Selector"""
 
-        element = self.ByCSS(selector)
+        locator = Locator(By.CSS_SELECTOR, selector)
 
-        ActionChains(self.driver).move_to_element(element).click(element).perform()
+        self.ClickAction(locator)
 
     def ClickActionXPATH(self, selector):
         """Use Action to Click Element By XPATH Selector"""
 
-        element = self.ByXPATH(selector)
+        locator = Locator(By.XPATH, selector)
 
-        ActionChains(self.driver).move_to_element(element).click(element).perform()
+        self.ClickAction(locator)
 
-    def ClickActionObj(self, element):
-        """Use Action to Click Web Element"""
+    def ClickActionID(self, selector):
+        """Click an Element By ID"""
 
-        ActionChains(self.driver).move_to_element(element).click(element).perform()
+        locator = Locator(By.ID, selector)
 
-    def ClickAction(self, item):
-        """Use Action to Click Element, By CSS, XPATH or WebObject"""
-
-        element = None
-
-        if type(item) is str:
-            # This is a bad, minimal, expression for an XPath, but we aren't looking for high accurracy here
-            expr = r"(//.*){1,3}"
-
-            if re.search(expr, item):
-                # Probable XPATH
-                element = self.ByXPATH(item)
-            else:
-                # Probable CSS
-                element = self.ByCSS(item)
-        else:
-            element = item
-
-        ActionChains(self.driver).move_to_element(element).click(element).perform()
+        self.ClickAction(locator)
 
     def JClickActionCSS(self, selector):
         """Java Click Action by CSS Selector"""
@@ -1229,7 +1297,7 @@ class SeleniumBase:
         return self.driver.page_source
 
 
-class Browser(SeleniumBase, SleepShortCuts):
+class Browser(SeleniumBase):
     """Browser Instance Class"""
 
     options = None
@@ -1245,7 +1313,8 @@ class Browser(SeleniumBase, SleepShortCuts):
         self.downloadPath = download_path
 
         self.options = self.DownloadOptions(download_path)
-        self.driver = webdriver.Chrome(options=self.options)
+        driver = webdriver.Chrome(options=self.options)
+        super().__init__(driver)
         self.Get(url)
 
 
@@ -1255,21 +1324,29 @@ class BaseElement(SeleniumBase):
     locator = None
     element = None
 
-    def __init__(self, driver, locator, wait=10):
+    def __init__(self, driver, item, wait=10, locator=None):
         """Init BaseElement"""
 
-        self.driver = driver
-        self.locator = locator
-        self.find(wait)
+        super().__init__(driver)
+
+        if type(item) is Locator:
+            self.locator = item
+            self.find(wait)
+        elif type(item) is WebElement:
+            self.element = item
+            self.locator = locator if locator is not None else None
 
     def find(self, wait=0):
         """Find Element"""
 
-        if wait > 0:
-            self.element = WebDriverWait(
-                self.driver, wait).until(visibility_of_element_located(self.locator))
-        else:
-            self.element = self.driver.find_element(self.locator.by, self.locator.value)
+        self.element = None
+
+        if self.locator is not None:
+            if wait > 0:
+                self.element = WebDriverWait(
+                    self.driver, wait).until(visibility_of_element_located(self.locator))
+            else:
+                self.element = self.driver.find_element(self.locator.by, self.locator.value)
 
         return self.element
 
@@ -1278,7 +1355,7 @@ class BaseElement(SeleniumBase):
 
         element = WebDriverWait(self.driver, wait).until(element_to_be_clickable(self.locator))
 
-        self.ClickActionObj(element)
+        self.ClickAction(element)
 
     @property
     def text(self):
@@ -1306,6 +1383,27 @@ class BaseElement(SeleniumBase):
 
         self.element.set_property("innerText", value)
 
+    @property
+    def displayed(self):
+        """Check is Displayed"""
+
+        return self.element.is_displayed()
+
+    @property
+    def enabled(self):
+        """Check is Enabled"""
+
+        return self.element.is_enabled()
+
+    def get_property(self, prop):
+        """Get Element Property"""
+
+        return self.element.get_property(prop)
+
+    def get_attribute(self, attribute):
+        """Get Element Attribute"""
+
+        return self.element.get_attribute(attribute)
 
 class ASCBrowser(Browser):
     """ACS Browser Class"""
@@ -1451,7 +1549,7 @@ class ASCBrowser(Browser):
 
             self.Half()
 
-            self.ClickActionObj(submitButton)
+            self.ClickAction(submitButton)
 
             self.Second()
 
@@ -1481,11 +1579,11 @@ class ASCBrowser(Browser):
 
         logoffAnchor = self.ByCSS(anchorID)
 
-        self.ClickActionObj(spanobj)
+        self.ClickAction(spanobj)
 
         WebDriverWait(self.driver, 30).until(visibility_of(logoffAnchor))
 
-        self.ClickActionObj(logoffAnchor)
+        self.ClickAction(logoffAnchor)
 
         DbgExit(dbgblk, dbglb)
 
@@ -1542,9 +1640,12 @@ class ASCBrowser(Browser):
         italicsCss = "div[id='rightContent'] > table[id='aswpwfteapte42'] > tbody > tr > td > i[id='aswpwfteapte32']"
         italicsXpath = "//div[@id='rightContent']/table[@id='aswpwfteapte42']/tbody/tr/td/i[@id='aswpwfteapte32']"
 
-        results = self.WaitPresenceCSS(timeout, italicsCss)
+        success = False
 
-        success = results["present"]
+        results = self.WaitPresenceCSS(italicsCss, timeout)
+
+        if results.element is not None and not results.error[0]:
+            success = (results.element.displayed and results.element.enabled)
 
         DbgExit(dbgblk, dbglb)
 
@@ -1562,7 +1663,6 @@ class ASCBrowser(Browser):
         self.Second()
 
         italicsCss = "div[id='rightContent'] > table[id='aswpwfteapte42'] > tbody > tr > td > i[id='aswpwfteapte32']"
-        italicsXpath = "//div[@id='rightContent']/table[@id='aswpwfteapte42']/tbody/tr/td/i[@id='aswpwfteapte32']"
 
         success = False
 
@@ -1584,9 +1684,7 @@ class ASCBrowser(Browser):
 
             if italics.is_displayed():
                 self.Half()
-                DbgMsg("Trying to close/click Popout", dbglabel=dbglb)
-                self.ClickActionObj(italics)
-                DbgMsg("Popout should be closed", dbglabel=dbglb)
+                self.ClickAction(italics)
                 self.Half()
 
                 success = True
@@ -1602,6 +1700,28 @@ class ASCBrowser(Browser):
         DbgExit(dbgblk, dbglabel=dbglb)
 
         return success
+
+    @property
+    def SearchWarningPresent(self):
+        """Determine if Search Warning is Present"""
+
+        present = False
+
+        try:
+            warning = BaseElement(self.driver,
+                Locator(By.CSS_SELECTOR, "div > ul > li > span[class='ui-messages-error-detail']"))
+
+            if warning is not None and warning.innerText == "An error has occurred while searching (error: 20403)":
+                present = True
+        except TimeoutException as t_err:
+            pass
+        except NoSuchElementException as ns_err:
+            pass
+        except Exception as err:
+            if DebugMode():
+                breakpoint()
+
+        return present
 
     def GetPageCount(self):
         """Get Search Results Page Count"""
@@ -1793,20 +1913,12 @@ class ASCBrowser(Browser):
 
         pauseBtnCss = "div[id='asc_playercontrols_pause_btn']"
 
-        pauseBtn = self.ByCSS(pauseBtnCss)
+        results = self.WaitVisibleCSS(pauseBtnCss, timeout)
 
-        try:
-            WebDriverWait(self.driver, timeout).until(visibility_of(pauseBtn))
-
-            self.ClickActionObj(pauseBtn)
-        except TimeoutException:
-            DbgMsg("Timeout reached, player control is not visible or accessible, BAD", dbglabel=dbglb)
-        except NoSuchElementException:
-            DbgMsg("No such element error while looking for pause button", dbglabel=dbglb)
-        except StaleElementReferenceException:
-            DbgMsg("Stale element exception while looking for pause button", dbglabel=dbglb)
-        except Exception as err:
-            DbgMsg(f"A generic error occurred while trying to pause player : {err}", dbglabel=dbglb)
+        if results.element is not None and results.element.displayed and results.element.enabled:
+            self.ClickAction(results.element)
+        elif results.error[0]:
+            ErrMsg(results.error[2], "An error occurred while trying to pause the player")
 
         DbgExit(dbgblk, dbglb)
 
@@ -1826,17 +1938,17 @@ class ASCBrowser(Browser):
 
         stalled = False
 
-        result = self.WaitPresenceCSS(3, saveBoxCss)
+        result = self.WaitPresenceCSS(saveBoxCss, 3)
 
-        if result["present"]:
+        if result.element is not None:
             timechk = datetime.now()
 
-            while result["present"] and not stalled:
+            while result.element is not None and not stalled:
                 self.Quarter()
 
-                result = self.WaitPresenceCSS(1, saveBoxCss)
+                result = self.WaitPresenceCSS(saveBoxCss,1)
 
-                if result["present"]:
+                if result.element is not None:
                     time_passed = datetime.now() - timechk
 
                     if time_passed.seconds > 8:
@@ -1845,7 +1957,7 @@ class ASCBrowser(Browser):
 
                         if cancelBtn is not None and progress is not None and time_passed.seconds <= 10:
                             if progress.text == "0%":
-                                self.ClickActionObj(cancelBtn)
+                                self.ClickAction(cancelBtn)
                                 stalled = True
                             elif progress.text == "":
                                 try:
@@ -1859,7 +1971,7 @@ class ASCBrowser(Browser):
                         elif time_passed.seconds > 10:
                             stalled = True
                             if cancelBtn is not None:
-                                self.ClickActionObj(cancelBtn)
+                                self.ClickAction(cancelBtn)
 
         if stalled and DebugMode():
             DbgMsg(f"Stalled on rowkey {rowkey}", dbglabel=dbglb)
@@ -1894,36 +2006,35 @@ class ASCBrowser(Browser):
         try:
             self.ClosePopOut()
 
-            result = self.WaitPresenceCSS(8, errorCss)
+            result = self.WaitPresenceCSS(errorCss, 8)
 
-            if result["present"]:
+            if result.element is not None:
                 DbgMsg(f"Warning present", dbglabel=dbglb)
 
-                warning = result["item"]
+                warning = result.element
 
                 self.Sleep(1.5)
 
                 msg = self.ByCSS(errMsg)
 
-                # Not because I want to, but because this WebUI is so fucking unpredictable in spots... this being one of them.
                 if warning is not None:
                     try:
-                        if warning.is_displayed():
+                        if warning.displayed:
                             pass
                     except Exception as err:
                         self.Second()
                         warning = self.ByCSS(errorCss)
 
-                if warning.is_displayed() and warning.is_enabled():
+                if warning.displayed and warning.enabled:
                     errmsg = edom(msg)["innerText"]
 
                     DbgMsg(f"Warning is displayed AND enabled with '{errmsg}' for {rowkey}", dbglabel=dbglb)
-                    self.ClickActionObj(warning)
+                    warning.click()
                     self.Sleep(3)
                 else:
                     DbgMsg(f"Warning detected for {rowkey}", dbglabel=dbglb)
-                    vismsg = "Is visible" if warning.is_displayed() else "Is NOT visible"
-                    enamsg = "Is enabled" if warning.is_enabled() else "Is NOT enabled"
+                    vismsg = "Is visible" if warning.displayed else "Is NOT visible"
+                    enamsg = "Is enabled" if warning.enabled else "Is NOT enabled"
                     errmesg = edom(msg)[
                         "innerText"]  # Named errmesg on purpose to prevent it messing with active errmsg
 
@@ -1939,13 +2050,6 @@ class ASCBrowser(Browser):
 
             if DebugMode():
                 breakpoint()
-
-        if BreakWhen(conditions, rowkey=rowkey):
-            DbgMsg(f"Rowkey, {rowkey}, matches break condition", dbglabel=dbglb)
-            breakpoint()
-
-        BreakpointCheck()
-        CheckForEarlyTerminate()
 
         DbgExit(dbgblk, dbglb)
 
@@ -2020,7 +2124,7 @@ class ASCBrowser(Browser):
             try:
                 # Find "General dropdown
                 general = self.ByCSS("a[id='conversationToolbar:commonFunctionsMenuBtn']")
-                self.ClickActionObj(general)
+                self.ClickAction(general)
             except Exception as err:
                 ErrMsg(err, "An error occurred while trying to find a webelement")
 
@@ -2029,7 +2133,7 @@ class ASCBrowser(Browser):
             try:
                 # Find Search anchor and click it
                 anchor = self.ByCSS("a[id='conversationToolbar:toolbarSearchBtn']")
-                self.ClickActionObj(anchor)
+                self.ClickAction(anchor)
             except Exception as err:
                 ErrMsg(err, "An error occurred while trying to find a webelement")
 
@@ -2077,7 +2181,7 @@ class ASCBrowser(Browser):
                 Msg(f"Conducting search between {startDate} and {endDate}")
 
                 # Start Search
-                self.ClickActionObj(searchBtn)
+                self.ClickAction(searchBtn)
             except Exception as err:
                 ErrMsg(err, "An error occurred while trying to find a webelement")
 
@@ -2094,7 +2198,7 @@ class ASCBrowser(Browser):
             Msg(f"Elapsed search time : {searchDuration}")
 
             # Close Search Box
-            self.ClickActionObj(closeAnchor)
+            self.ClickAction(closeAnchor)
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to execute a search")
 
@@ -2159,7 +2263,7 @@ class ASCBrowser(Browser):
         cancelBtnCss = "button[class='asc_jbox_cancel_button']"
 
         saveBtn = self.ByCSS(saveCss)
-        self.ClickActionObj(saveBtn)
+        self.ClickAction(saveBtn)
 
         # Will Bring up dialog
         audioInputDis = None
@@ -2174,7 +2278,7 @@ class ASCBrowser(Browser):
                 success = False
                 try:
                     self.Half()
-                    self.ClickActionObj(cancelBtn)
+                    self.ClickAction(cancelBtn)
                 except Exception as err:
                     if DebugMode():
                         breakpoint()
@@ -2191,7 +2295,7 @@ class ASCBrowser(Browser):
                 if audioInput is not None and audioCheckboxTest(audioInput):
                     audioEnabled = True
 
-                    self.ClickActionObj(audioInput)
+                    self.ClickAction(audioInput)
 
                     self.Half()
 
@@ -2199,13 +2303,13 @@ class ASCBrowser(Browser):
 
                     while not aiObj.get_prop("checked", False) and count < 3:
                         self.Half()
-                        self.ClickActionObj(audioInput)
+                        self.ClickAction(audioInput)
                         count += 1
                     else:
                         if count > 2 and not aiObj.get_prop("checked", False):
                             success = False
 
-                            self.ClickActionObj(cancelBtn)
+                            self.ClickAction(cancelBtn)
 
                             DbgExit(dbgblk, dbglb)
 
@@ -2217,7 +2321,7 @@ class ASCBrowser(Browser):
 
                     self.Half()
 
-                    self.ClickActionObj(okBtn)
+                    self.ClickAction(okBtn)
                 else:
                     reason = "not checked"
 
@@ -2225,7 +2329,7 @@ class ASCBrowser(Browser):
 
                     success = False
                     self.Half()
-                    self.ClickActionObj(cancelBtn)
+                    self.ClickAction(cancelBtn)
 
                     self.Half()
             except ElementClickInterceptedException as err_eci:
@@ -2460,17 +2564,17 @@ class ASCBrowser(Browser):
         self.MainContext()
 
         while page_count < pages and moved_forward:
-            results = self.WaitPresenceCSS(30, next_button_css)
+            results = self.WaitPresenceCSS(next_button_css, 30)
 
-            if not results["present"] and DebugMode():
+            if results.element is None and DebugMode():
                 DbgMsg("Next button is NONE for some reason", dbglabel=ph.Informational)
                 breakpoint()
 
-            next_btn = results["item"] if results["present"] else None
+            next_btn = results.element
 
             if next_btn is not None and next_btn.get_attribute("class") != next_class_disabled:
                 # More pages of items for this search to download
-                self.ClickActionObj(next_btn)
+                self.ClickAction(next_btn)
 
                 self.Sleep(4)
 
@@ -3821,7 +3925,7 @@ def GeteBook(config, download_path):
 
     browser.Half()
 
-    browser.ClickActionObj(loginButton)
+    browser.ClickAction(loginButton)
 
     browser.Sleep(3)
 
@@ -3831,18 +3935,18 @@ def GeteBook(config, download_path):
 
     btnCss = "button[id='freeLearningClaimButton']"
 
-    browser.WaitPresenceCSS(120, btnCss)
+    browser.WaitPresenceCSS(btnCss, 120)
 
     getAccessButton = browser.ByCSS(btnCss)
 
-    browser.ClickActionObj(getAccessButton)
+    browser.ClickAction(getAccessButton)
 
     dlBtn = browser.TagToAppear(By.CSS_SELECTOR, "button[id='d4']", timeout=120)
 
     while not (dlBtn.is_displayed() and dlBtn.is_enabled()):
         browser.Half()
 
-    browser.ClickActionObj(dlBtn)
+    browser.ClickAction(dlBtn)
 
     browser.ClickActionXPATH("//div[@class='download-container book']/a[text()='PDF']")
 
@@ -3863,7 +3967,7 @@ def GeteBook(config, download_path):
     if not DebugMode():
         logoutLink = browser.ByXPATH("//a[text()='Sign Out']")
 
-        browser.ClickActionObj(logoutLink)
+        browser.ClickAction(logoutLink)
 
 
 def GetTSA(url):
@@ -3877,7 +3981,7 @@ def GetTSA(url):
 
     button1 = browser.ByCSS("button[id='b1']")
 
-    browser.ClickActionObj(button1)
+    browser.ClickAction(button1)
 
     # alert = browser.switch_to.alert
     alert = Alert(browser.driver)
@@ -3896,7 +4000,6 @@ def GetTSA(url):
 
     Msg("Sleeping for 8 seconds")
     browser.Sleep(8)
-    #Pause("Paused here...")
 
     browser.Quit()
 
@@ -3958,7 +4061,7 @@ def GetStones(url):
     r1btn = browser.ByCSS("button#r1Btn")       # Notice here, we provide a CSS button selector WITH an ID
     r1.send_keys("rock")
 
-    browser.ClickActionObj(r1btn)
+    browser.ClickAction(r1btn)
 
     r1div = browser.ByXPATH("//div[@id='passwordBanner']/h4")
     password = r1div.text
@@ -3968,7 +4071,7 @@ def GetStones(url):
     r2btn = browser.ByCSS("button[id='r2Butn']")
 
     r2.send_keys(password)
-    browser.ClickActionObj(r2btn)
+    browser.ClickAction(r2btn)
 
     r2div = browser.ByXPATH("//div[@id='successBanner1']")
 
@@ -4004,7 +4107,7 @@ def GetStones(url):
                     rinput.send_keys(person)
                     value = tmpValue
 
-        browser.ClickActionObj(rbtn)
+        browser.ClickAction(rbtn)
         rdiv = browser.ByXPATH("//div[@id='successBanner2']")
 
         if rdiv.get_attribute("style") != "display: none":
@@ -4014,7 +4117,7 @@ def GetStones(url):
 
         chkbtn = browser.ByCSS("button[id='checkButn']")
 
-        browser.ClickActionObj(chkbtn)
+        browser.ClickAction(chkbtn)
 
         div = browser.ByXPATH("//div[@id='trialCompleteBanner']")
 
@@ -4027,7 +4130,6 @@ def GetStones(url):
 
     Msg("Sleeping for 8 seconds")
     browser.Sleep(8)
-    #Pause("Paused here...")
 
     browser.Quit()
 
