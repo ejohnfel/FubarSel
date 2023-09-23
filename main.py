@@ -1296,6 +1296,42 @@ class SeleniumBase(SleepShortCuts):
 
         return self.driver.page_source
 
+    def VisibleAndEnabled(self, item, value=None, timeout=1, max_attempts=5):
+        """Do a safe Visible Check, To Avoid StaleElement Exceptions"""
+
+        success = False
+        element = None
+
+        by = None
+
+        if type(item) is Locator:
+            by = item.by
+            value = item.value
+
+        attempts = 0
+        error = None
+
+        while attempts < max_attempts and not success:
+            try:
+                element = self.FindElement(by, value)
+
+                success = element.is_enabled() and element.is_displayed()
+            except StaleElementReferenceException as s_err:
+                error = s_err
+                attempts += 1
+                self.Sleep(timeout)
+            except NoSuchElementException as ns_err:
+                error = ns_err
+                attempts = sys.maxint
+            except Exception as err:
+                error = err
+                attempts = sys.maxint
+        else:
+            if error is not None and DebugMode():
+                DbgMsg(f"An unexpected error/condition occurred when evaluating is_enabled and is_displayed: {error}", dbglabel=ph.Informational)
+
+        return success, error
+
 
 class Browser(SeleniumBase):
     """Browser Instance Class"""
@@ -1649,24 +1685,11 @@ class ASCBrowser(Browser):
             results = self.WaitPresenceCSS(italicsCss, timeout)
 
             if results.element is not None and not results.error[0]:
-                attempts = 0
-                while attempts < 10 and not success:
-                    try:
-                        element = BaseElement(self.driver, Locator(By.CSS_SELECTOR, italicsCss))
-                        success = (element.displayed and element.enabled)
-                    except StaleElementReferenceException as s_err:
-                        attempts += 1
-                        error = s_err
-                        self.Second()
-                    except Exception as err:
-                        # Something weird/unexpected happened here... terminate the loop immediately
-                        attempts = sys.maxint
-                        error = err
-                        self.Second()
-                else:
-                    if not success:
-                        error.add_note("Tried 10 times to acquire element and failed")
-                        raise error
+                success, error = self.VisibleAndEnabled(By.CSS_SELECTOR, italicsCss,1,10)
+
+                if not success and error is not None:
+                    error.add_note("Failed to reacquire italics and evaluate it")
+                    raise error
         except StaleElementReferenceException as s_err:
             error = s_err
         except TimeoutException as t_err:
@@ -2100,27 +2123,21 @@ class ASCBrowser(Browser):
         line = -1
 
         try:
-            line = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(5):
                 line = cline()
                 self.ClosePopOut(self.mainFrame)
 
-            line = inspect.getframeinfo(inspect.currentframe()).lineno
             self.BusySpinnerPresent(True)
 
-            line = inspect.getframeinfo(inspect.currentframe()).lineno
             row = BaseElement(self.driver, Locator(By.XPATH, f"//tr[@data-rk='{rowkey}']"))
 
-            line = inspect.getframeinfo(inspect.currentframe()).lineno
             self.DoubleClickActionObj(row)
 
             self.Second()
 
             time_check = datetime.now()
 
-            line = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(60):
-                line = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut(self.mainFrame)
 
                 duration = datetime.now() - time_check
