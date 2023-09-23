@@ -1297,6 +1297,7 @@ class SeleniumBase(SleepShortCuts):
         return self.driver.page_source
 
     def VisibleAndEnabled(self, item, value=None, timeout=1, max_attempts=5):
+
         """Do a safe Visible Check, To Avoid StaleElement Exceptions"""
 
         success = False
@@ -1316,17 +1317,17 @@ class SeleniumBase(SleepShortCuts):
                 element = self.FindElement(by, value)
 
                 success = element.is_enabled() and element.is_displayed()
-                attempts = sys.maxint
+                attempts = max_attempts + 1
             except StaleElementReferenceException as s_err:
                 self.Sleep(timeout)
                 error = s_err
-                attempts += 1
+                attempts = max_attempts + 1
             except NoSuchElementException as ns_err:
                 error = ns_err
-                attempts = sys.maxint
+                attempts = max_attempts + 1
             except Exception as err:
                 error = err
-                attempts = sys.maxint
+                attempts = max_attempts + 1
         else:
             if error is not None and DebugMode():
                 DbgMsg(f"An unexpected error/condition occurred when evaluating is_enabled and is_displayed: {error}", dbglabel=ph.Informational)
@@ -2720,6 +2721,9 @@ class ASCBrowser(Browser):
             # Now, download the results X at a time and remember to page until you can't page anymore
             while not needs_refresh:
                 self.MainContext()
+
+                if self.PopoutPresent(2):
+                    self.ClosePopOut(self.mainFrame)
 
                 recordings = list()
 
