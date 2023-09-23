@@ -1646,13 +1646,27 @@ class ASCBrowser(Browser):
         error = None
 
         try:
-            line = inspect.getframeinfo(inspect.currentframe()).lineno
             results = self.WaitPresenceCSS(italicsCss, timeout)
 
-            line = inspect.getframeinfo(inspect.currentframe()).lineno
             if results.element is not None and not results.error[0]:
-                line = inspect.getframeinfo(inspect.currentframe()).lineno
-                success = (results.element.displayed and results.element.enabled)
+                attempts = 0
+                while attempts < 10 and not success:
+                    try:
+                        element = BaseElement(self.driver, Locator(By.CSS_SELECTOR, italicsCss))
+                        success = (element.displayed and element.enabled)
+                    except StaleElementReferenceException as s_err:
+                        attempts += 1
+                        error = s_err
+                        self.Second()
+                    except Exception as err:
+                        # Something weird/unexpected happened here... terminate the loop immediately
+                        attempts = sys.maxint
+                        error = err
+                        self.Second()
+                else:
+                    if not success:
+                        error.add_note("Tried 10 times to acquire element and failed")
+                        raise error
         except StaleElementReferenceException as s_err:
             error = s_err
         except TimeoutException as t_err:
@@ -1661,11 +1675,6 @@ class ASCBrowser(Browser):
             error = ns_err
         except Exception as err:
             error = err
-
-        if error is not None and DebugMode():
-            ErrMsg(error, "Error encountered")
-            DbgMsg(f"Last line executed = {line}", dbglabel=ph.Informational)
-            breakpoint()
 
         DbgExit(dbgblk, dbglb)
 
