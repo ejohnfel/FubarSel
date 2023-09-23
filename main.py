@@ -1641,11 +1641,31 @@ class ASCBrowser(Browser):
         italicsXpath = "//div[@id='rightContent']/table[@id='aswpwfteapte42']/tbody/tr/td/i[@id='aswpwfteapte32']"
 
         success = False
+        results = None
+        line = -1
+        error = None
 
-        results = self.WaitPresenceCSS(italicsCss, timeout)
+        try:
+            line = inspect.getframeinfo(inspect.currentframe()).lineno
+            results = self.WaitPresenceCSS(italicsCss, timeout)
 
-        if results.element is not None and not results.error[0]:
-            success = (results.element.displayed and results.element.enabled)
+            line = inspect.getframeinfo(inspect.currentframe()).lineno
+            if results.element is not None and not results.error[0]:
+                line = inspect.getframeinfo(inspect.currentframe()).lineno
+                success = (results.element.displayed and results.element.enabled)
+        except StaleElementReferenceException as s_err:
+            error = s_err
+        except TimeoutException as t_err:
+            error = t_err
+        except NoSuchElementException as ns_err:
+            error = ns_err
+        except Exception as err:
+            error = err
+
+        if error is not None and DebugMode():
+            ErrMsg(error, "Error encountered")
+            DbgMsg(f"Last line executed = {line}", dbglabel=ph.Informational)
+            breakpoint()
 
         DbgExit(dbgblk, dbglb)
 
@@ -2071,27 +2091,27 @@ class ASCBrowser(Browser):
         line = -1
 
         try:
-            line = cline()
+            line = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(5):
                 line = cline()
                 self.ClosePopOut(self.mainFrame)
 
-            line = cline()
+            line = inspect.getframeinfo(inspect.currentframe()).lineno
             self.BusySpinnerPresent(True)
 
-            line = cline()
+            line = inspect.getframeinfo(inspect.currentframe()).lineno
             row = BaseElement(self.driver, Locator(By.XPATH, f"//tr[@data-rk='{rowkey}']"))
 
-            line = cline()
+            line = inspect.getframeinfo(inspect.currentframe()).lineno
             self.DoubleClickActionObj(row)
 
             self.Second()
 
             time_check = datetime.now()
 
-            line = cline()
+            line = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(60):
-                line = cline()
+                line = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut(self.mainFrame)
 
                 duration = datetime.now() - time_check
