@@ -1302,7 +1302,7 @@ class SeleniumBase(SleepShortCuts):
         success = False
         element = None
 
-        by = None
+        by = item
 
         if type(item) is Locator:
             by = item.by
@@ -1311,15 +1311,16 @@ class SeleniumBase(SleepShortCuts):
         attempts = 0
         error = None
 
-        while attempts < max_attempts and not success:
+        while attempts < max_attempts:
             try:
                 element = self.FindElement(by, value)
 
                 success = element.is_enabled() and element.is_displayed()
+                attempts = sys.maxint
             except StaleElementReferenceException as s_err:
+                self.Sleep(timeout)
                 error = s_err
                 attempts += 1
-                self.Sleep(timeout)
             except NoSuchElementException as ns_err:
                 error = ns_err
                 attempts = sys.maxint
@@ -2620,6 +2621,9 @@ class ASCBrowser(Browser):
         moved_forward = True
 
         self.MainContext()
+
+        if self.PopoutPresent(2):
+            self.ClosePopOut(self.mainFrame)
 
         while page_count < pages and moved_forward:
             results = self.WaitPresenceCSS(next_button_css, 30)
