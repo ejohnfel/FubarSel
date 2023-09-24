@@ -1308,9 +1308,10 @@ class SeleniumBase(SleepShortCuts):
             value = item.value
 
         attempts = 0
-        error = None
 
         while attempts < max_attempts:
+            error = None
+
             try:
                 element = self.FindElement(by, value)
 
@@ -2056,26 +2057,35 @@ class ASCBrowser(Browser):
         warning = None
 
         try:
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(10):
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut()
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             warning = self.WaitPresenceCSS(errorCss, 8)
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             if warning.element is not None:
                 DbgMsg(f"Warning present", dbglabel=dbglb)
 
                 self.Sleep(1.5)
 
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 msg = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errMsg))
 
                 try:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     if warning.displayed:
                         pass
                 except Exception as err:
                     self.Second()
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     warning = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errorCss))
 
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 if warning.displayed and warning.enabled:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     errmsg = msg.innerText
                     #errmsg = edom(msg)["innerText"]
 
@@ -2083,6 +2093,7 @@ class ASCBrowser(Browser):
                     warning.click()
                     self.Sleep(3)
                 else:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     DbgMsg(f"Warning detected for {rowkey}", dbglabel=dbglb)
                     vismsg = "Is visible" if warning.displayed else "Is NOT visible"
                     enamsg = "Is enabled" if warning.enabled else "Is NOT enabled"
@@ -2124,7 +2135,6 @@ class ASCBrowser(Browser):
 
         try:
             if self.PopoutPresent(5):
-                line = cline()
                 self.ClosePopOut(self.mainFrame)
 
             self.BusySpinnerPresent(True)
