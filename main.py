@@ -101,8 +101,6 @@ BreakOn = list()
 # List of Events Reported
 EventList = list()
 
-cline = lambda: inspect.getframeinfo(inspect.currentframe()).lineno
-
 # Eventing Stuff
 
 
@@ -2671,7 +2669,9 @@ class ASCBrowser(Browser):
 
         dbgblk, dbglb = DbgNames(self.BatchDownloading)
 
-        DbgEnter(dbgblk, dbglb)
+        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
+        DbgEnter(f"{dbgblk} @ {lineno}", dbglb)
 
         completed = 0
         errored = 0
