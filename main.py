@@ -2056,29 +2056,28 @@ class ASCBrowser(Browser):
         warning = None
 
         try:
-            self.ClosePopOut()
+            if self.PopoutPresent(10):
+                self.ClosePopOut()
 
-            result = self.WaitPresenceCSS(errorCss, 8)
+            warning = self.WaitPresenceCSS(errorCss, 8)
 
-            if result.element is not None:
+            if warning.element is not None:
                 DbgMsg(f"Warning present", dbglabel=dbglb)
-
-                warning = result.element
 
                 self.Sleep(1.5)
 
-                msg = self.ByCSS(errMsg)
+                msg = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errMsg))
 
-                if warning is not None:
-                    try:
-                        if warning.displayed:
-                            pass
-                    except Exception as err:
-                        self.Second()
-                        warning = self.ByCSS(errorCss)
+                try:
+                    if warning.displayed:
+                        pass
+                except Exception as err:
+                    self.Second()
+                    warning = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errorCss))
 
                 if warning.displayed and warning.enabled:
-                    errmsg = edom(msg)["innerText"]
+                    errmsg = msg.innerText
+                    #errmsg = edom(msg)["innerText"]
 
                     DbgMsg(f"Warning is displayed AND enabled with '{errmsg}' for {rowkey}", dbglabel=dbglb)
                     warning.click()
@@ -2087,8 +2086,9 @@ class ASCBrowser(Browser):
                     DbgMsg(f"Warning detected for {rowkey}", dbglabel=dbglb)
                     vismsg = "Is visible" if warning.displayed else "Is NOT visible"
                     enamsg = "Is enabled" if warning.enabled else "Is NOT enabled"
-                    errmesg = edom(msg)[
-                        "innerText"]  # Named errmesg on purpose to prevent it messing with active errmsg
+                    errmesg = msg.innerText
+                    #errmesg = edom(msg)[
+                    #    "innerText"]  # Named errmesg on purpose to prevent it messing with active errmsg
 
                     DbgMsg(f"Visibility\t: {vismsg}", dbglabel=dbglb)
                     DbgMsg(f"Enabled\t: {enamsg}", dbglabel=dbglb)
