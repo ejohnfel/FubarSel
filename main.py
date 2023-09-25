@@ -17,6 +17,7 @@ import inspect
 import functools
 from lxml import etree
 import ait
+import py_helper as ph
 
 import asyncio
 import threading
@@ -1431,6 +1432,16 @@ class BaseElement(SeleniumBase):
 
         return self.element.is_enabled()
 
+    def is_displayed(self):
+        """Compatibility Function for 'displayed'"""
+
+        return self.displayed
+
+    def is_enabled(self):
+        """Compatibility Function for 'enabled'"""
+
+        return self.enabled
+
     def get_property(self, prop):
         """Get Element Property"""
 
@@ -2035,15 +2046,12 @@ class ASCBrowser(Browser):
 
         return stalled
 
-    def WarningMsg(self, rowkey=None):
+    def WarningMsg(self, timeout=6):
         """Check for a Warning Popup"""
 
         dbgblk, dbglb = DbgNames(self.WarningMsg)
 
         DbgEnter(dbgblk, dbglb)
-        DbgMsg(f"Checking for warning on {rowkey}", dbglabel=dbglb)
-
-        conditions = {"rowkey": ""}
 
         # Wait for error, set success to False if error pops up
         prefix = "div[id='globalHeaderMessage'] > div > div > div[id='headerMessages'] > div"
@@ -2056,16 +2064,13 @@ class ASCBrowser(Browser):
         warning = None
 
         try:
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(10):
                 lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut()
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
-            warning = self.WaitPresenceCSS(errorCss, 8)
+            warning = self.WaitPresenceCSS(errorCss, timeout)
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
-            if warning.element is not None:
+            if warning.element is not None and warning.element.displayed and warning.element.enabled:
                 DbgMsg(f"Warning present", dbglabel=dbglb)
 
                 self.Sleep(1.5)
@@ -2074,26 +2079,21 @@ class ASCBrowser(Browser):
                 msg = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errMsg))
 
                 try:
-                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     if warning.displayed:
                         pass
                 except Exception as err:
                     self.Second()
-                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     warning = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errorCss))
 
-                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 if warning.displayed and warning.enabled:
-                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     errmsg = msg.innerText
                     #errmsg = edom(msg)["innerText"]
 
-                    DbgMsg(f"Warning is displayed AND enabled with '{errmsg}' for {rowkey}", dbglabel=dbglb)
+                    DbgMsg(f"Warning is displayed AND enabled on this row'{errmsg}'", dbglabel=dbglb)
                     warning.click()
                     self.Sleep(3)
                 else:
-                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
-                    DbgMsg(f"Warning detected for {rowkey}", dbglabel=dbglb)
+                    DbgMsg(f"Warning detected on this row", dbglabel=dbglb)
                     vismsg = "Is visible" if warning.displayed else "Is NOT visible"
                     enamsg = "Is enabled" if warning.enabled else "Is NOT enabled"
                     errmesg = msg.innerText
@@ -2104,7 +2104,7 @@ class ASCBrowser(Browser):
                     DbgMsg(f"Enabled\t: {enamsg}", dbglabel=dbglb)
                     DbgMsg(f"With Msg\t: {errmesg}", dbglabel=dbglb)
             else:
-                DbgMsg(f"Warning is not present for {rowkey}", dbglabel=dbglb)
+                DbgMsg(f"Warning is not present on this row", dbglabel=dbglb)
         except StaleElementReferenceException as s_err:
             DbgMsg(f"Stale element error triggered during warning check : {s_err}", dbglabel=dbglb)
         except Exception as err:
@@ -2127,8 +2127,6 @@ class ASCBrowser(Browser):
 
         success = True
         needs_refresh = False
-
-        conditions = {"rowkey": ""}
 
         line = -1
 
@@ -2170,12 +2168,23 @@ class ASCBrowser(Browser):
 
         self.PausePlayer(timeout=3)
 
-        response = self.WarningMsg(rowkey=rowkey)
+        retry = True
+        retry_count = 0
 
-        success = (response == "")
+        while retry and retry_count < 3:
+            response = self.WarningMsg(timeout=3)
 
-        if success:
-            self.PausePlayer(timeout=2)
+            success = (response == "")
+
+            if success:
+                try:
+                    self.PausePlayer(timeout=2)
+                    retry = False
+                except:
+                    retry_count += 1
+            else:
+                self.CloseWarning(post_timeout=3)
+
 
         DbgExit(dbgblk, dbglb)
 
