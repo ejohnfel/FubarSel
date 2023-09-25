@@ -17,7 +17,6 @@ import inspect
 import functools
 from lxml import etree
 import ait
-import py_helper as ph
 
 import asyncio
 import threading
