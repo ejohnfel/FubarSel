@@ -1320,13 +1320,13 @@ class SeleniumBase(SleepShortCuts):
             except StaleElementReferenceException as s_err:
                 self.Sleep(timeout)
                 error = s_err
-                attempts = max_attempts + 1
+                attempts += 1
             except NoSuchElementException as ns_err:
                 error = ns_err
-                attempts = max_attempts + 1
+                attempts += 1
             except Exception as err:
                 error = err
-                attempts = max_attempts + 1
+                attempts += 1
         else:
             if error is not None and DebugMode():
                 DbgMsg(f"An unexpected error/condition occurred when evaluating is_enabled and is_displayed: {error}", dbglabel=ph.Informational)
@@ -2632,6 +2632,8 @@ class ASCBrowser(Browser):
         if self.PopoutPresent(2):
             self.ClosePopOut(self.mainFrame)
 
+        DbgMsg(f"Paging forward {pages} page(s)...", dbglabel=ph.Informational)
+
         while page_count < pages and moved_forward:
             results = self.WaitPresenceCSS(next_button_css, 30)
 
@@ -2645,7 +2647,7 @@ class ASCBrowser(Browser):
                 # More pages of items for this search to download
                 self.ClickAction(next_btn)
 
-                self.Sleep(4)
+                self.Sleep(3)
 
                 adjustment = 0
 
