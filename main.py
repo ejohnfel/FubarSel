@@ -2050,6 +2050,12 @@ class ASCBrowser(Browser):
 
         return stalled
 
+    def CloseWarning(self):
+        """Close Warning Message"""
+
+        error_selector = f"{prefix} > span"
+        self.ClickAction(Locator(By.CSS_SELECTOR, error_selector))
+
     def WarningMsg(self, timeout=6):
         """Check for a Warning Popup"""
 
@@ -2079,11 +2085,10 @@ class ASCBrowser(Browser):
 
                 self.Sleep(1.5)
 
-                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 msg = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errMsg))
 
                 try:
-                    if warning.displayed:
+                    if warning.element.displayed:
                         pass
                 except Exception as err:
                     self.Second()
@@ -2091,10 +2096,9 @@ class ASCBrowser(Browser):
 
                 if warning.displayed and warning.enabled:
                     errmsg = msg.innerText
-                    #errmsg = edom(msg)["innerText"]
 
                     DbgMsg(f"Warning is displayed AND enabled on this row'{errmsg}'", dbglabel=dbglb)
-                    warning.click()
+                    self.CloseWarning()
                     self.Sleep(3)
                 else:
                     DbgMsg(f"Warning detected on this row", dbglabel=dbglb)
