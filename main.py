@@ -2079,22 +2079,20 @@ class ASCBrowser(Browser):
                 self.ClosePopOut()
 
             warning = self.WaitPresenceCSS(errorCss, timeout)
+            element = warning.element
 
-            if warning.element is not None and warning.element.displayed and warning.element.enabled:
+            if element is not None and element.displayed and element.enabled:
                 DbgMsg(f"Warning present", dbglabel=dbglb)
 
                 self.Sleep(1.5)
 
                 msg = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errMsg))
 
-                try:
-                    if warning.element.displayed:
-                        pass
-                except Exception as err:
+                if not element.displayed:
                     self.Second()
-                    warning = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errorCss))
+                    element = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errorCss))
 
-                if warning.displayed and warning.enabled:
+                if element.displayed and element.enabled:
                     errmsg = msg.innerText
 
                     DbgMsg(f"Warning is displayed AND enabled on this row'{errmsg}'", dbglabel=dbglb)
@@ -2102,11 +2100,9 @@ class ASCBrowser(Browser):
                     self.Sleep(3)
                 else:
                     DbgMsg(f"Warning detected on this row", dbglabel=dbglb)
-                    vismsg = "Is visible" if warning.displayed else "Is NOT visible"
-                    enamsg = "Is enabled" if warning.enabled else "Is NOT enabled"
+                    vismsg = "Is visible" if element.displayed else "Is NOT visible"
+                    enamsg = "Is enabled" if element.enabled else "Is NOT enabled"
                     errmesg = msg.innerText
-                    #errmesg = edom(msg)[
-                    #    "innerText"]  # Named errmesg on purpose to prevent it messing with active errmsg
 
                     DbgMsg(f"Visibility\t: {vismsg}", dbglabel=dbglb)
                     DbgMsg(f"Enabled\t: {enamsg}", dbglabel=dbglb)
