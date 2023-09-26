@@ -85,8 +85,8 @@ recordingsCatalog = None
 # Generic Stuff
 runlog = None
 
-global_temp = None
-lastprocessed = None
+# Last Process Record
+last_processed = None
 
 Username = None
 Password = None
@@ -1461,10 +1461,15 @@ class ASCBrowser(Browser):
     # mainFrame = "applicationFrame"
     mainFrame = 0
 
-    def __init__(self, start_url, download_path):
+    # Archive Path
+    archive_path = None
+
+    def __init__(self, start_url, download_path, archive_path):
         """Initialize Instance"""
 
         super().__init__(start_url, download_path)
+
+        self.archive_path = archive_path
 
         self.SetContexts()
 
@@ -1895,7 +1900,6 @@ class ASCBrowser(Browser):
         DbgEnter(dbgblk, dbglb)
 
         if frame_name is not None:
-            Event("Switching frame")
             self.SwitchFrame(frame_name)
 
         if self.ClosePopOut():
@@ -1944,7 +1948,7 @@ class ASCBrowser(Browser):
                         retry_count += 1
 
                     if loaded != norecs and recording.data['Start Time'] != '':
-                        DbgMsg(f"Processing {count} : {recording.data['Conversation ID']}", dbglabel=dbglb)
+                        DbgMsg(f"Processing {count} : {recording.rowkey}", dbglabel=dbglb)
                         count += 1
 
                         records.append(recording)
@@ -2428,7 +2432,7 @@ class ASCBrowser(Browser):
     def Download(self, voice_recording, frame_name=None, rows=None):
         """Download Recording"""
 
-        global global_temp, lastprocessed
+        global last_processed
 
         dbgblk, dbglb = DbgNames(self.Download)
 
@@ -2441,14 +2445,7 @@ class ASCBrowser(Browser):
         rowkey = recording.rowkey
         row = None
 
-        if lastprocessed is None:
-            last_rowkey = rowkey
-        else:
-            last_rowkey = lastprocessed.recording.rowkey
-
-        lastprocessed = voice_recording
-
-        conditions = {"rowkey": ""}
+        last_rowkey = last_processed.recording.rowkey if last_processed is not None else None
 
         if frame_name is not None:
             self.SwitchFrame(frame_name)
@@ -2467,9 +2464,6 @@ class ASCBrowser(Browser):
             self.Half()
 
             if success:
-                # Begin Download
-                global_temp = ("activation succeeded", rowkey)
-
                 DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel=ph.Informational)
 
                 success, reason = self.BeginDownload()
@@ -2483,14 +2477,14 @@ class ASCBrowser(Browser):
                     recording.data["Archived"] = f"Audio Unavailable/Not Archived/{reason}"
                     AppendRows(catalogFilename, recording.data)
                     Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded because, {reason}")
-                else:
+                elif last_rowkey is not None:
                     self.Half()
 
                     stalled = self.StalledDownload(rowkey=last_rowkey)
 
                     if stalled:
-                        lastprocessed.AddToBad()
-                        lastprocessed.progress = 100
+                        last_processed.AddToBad()
+                        last_processed.progress = 100
 
                         Msg(f"Record {rowkey} for {recording.data['Start Time']} was not downloaded because it stalled")
 
@@ -2509,15 +2503,7 @@ class ASCBrowser(Browser):
             # check rowkey and list of rows
             Msg(f"Could not activate row with rowkey {rowkey} : {err}")
 
-        if BreakWhen(conditions, rowkey=rowkey):
-            DbgMsg(f"Rowkey, {rowkey}, matches for breakpoint", dbglabel=dbglb)
-            breakpoint()
-
-        if BreakpointCheck(nobreak=True) and DebugMode():
-            DbgMsg("A manual breakpoint was detected... and so I am breakpointing, probably should check the stalled thingy")
-            breakpoint()
-
-        lastprocessed = voice_recording
+        last_processed = voice_recording
 
         DbgExit(dbgblk, dbglb)
 
@@ -2688,7 +2674,6 @@ class ASCBrowser(Browser):
         dbgblk, dbglb = DbgNames(self.BatchDownloading)
 
         lineno = inspect.getframeinfo(inspect.currentframe()).lineno
-
         DbgEnter(f"{dbgblk} @ {lineno}", dbglb)
 
         completed = 0
@@ -2765,7 +2750,7 @@ class ASCBrowser(Browser):
                 for recording in recordings:
                     # Check recording to see if it's already downloaded or discardable in some other way
 
-                    vrec = VoiceDownload(recording, self.downloadPath)
+                    vrec = VoiceDownload(recording, self.downloadPath, self.archive_path)
 
                     recording_we_want = vrec.SelectForDownload()
 
@@ -2885,8 +2870,7 @@ class RecordingRecord:
     """RecordingRecord Class"""
 
     rowkey = None
-    row = None
-    cells = None
+    locator = None
     data = None
 
     def __init__(self, row=None):
@@ -2896,14 +2880,14 @@ class RecordingRecord:
             self.GetCells(row)
 
     def __getitem__(self, key):
-        """Get Item By Cell Name"""
+        """Get Item By Column Name"""
 
-        value = None
+        item = None
 
-        if self.cells is not None:
-            value = self.cells[key]
+        if self.data is not None:
+            item = self.data[key]
 
-        return value
+        return item
 
     def GetCells(self, row):
         """Get Cells From Row"""
@@ -2938,17 +2922,16 @@ class RecordingRecord:
             "Conversation ID"
         ]
 
-        self.row = row
-
         try:
-            self.cells = row.find_elements(By.CSS_SELECTOR, "td")
+            cells = row.find_elements(By.CSS_SELECTOR, "td")
 
-            if len(self.cells) > 1:
-                data_from_cells = [str(cell.text) for cell in self.cells]
+            if cells is not None and len(cells) > 1:
+                data_from_cells = [str(cell.text) for cell in cells]
                 self.data = dict(zip(header, data_from_cells))
                 self.rowkey = self.data["Conversation ID"]
-            else:
-                if self.cells[0].text == "No records found":
+                self.locator = Locator(By.XPATH, f"//td[text()='{self.rowkey}']/../tr")
+            elif cells is not None:
+                if cells[0].text == "No records found":
                     DbgMsg("No records returned", dbglabel=dbglb)
         except StaleElementReferenceException as err_ser:
             DbgMsg("Stale element exception", dbglabel=ph.Informational)
@@ -2959,8 +2942,7 @@ class RecordingRecord:
 
     def Print(self):
         print(f"Rowkey\t: {self.rowkey}")
-        print(f"Row\t: {self.row}")
-        print(f"Cells\t: {self.cells}")
+        print(f"Locator\t: {self.locator}")
         print(f"Data\t: {self.data}")
 
 
@@ -2968,16 +2950,18 @@ class VoiceDownload:
     """voice Download Class"""
 
     downloadPath = None
+    archive_path = None
     recording = None
     filename = None
     progress = 0
     is_bad = False
 
-    def __init__(self, recording, download_path):
+    def __init__(self, recording, download_path, archive_path):
         """Initialize Instance"""
 
         self.recording = recording
         self.downloadPath = download_path
+        self.archive_path = archive_path
 
     def GetDownloadInfo(self, browser, sleep_time=3):
         """Get Download Info"""
@@ -2985,8 +2969,6 @@ class VoiceDownload:
         dbgblk, dbglb = DbgNames(self.GetDownloadInfo)
 
         DbgEnter(dbgblk, dbglb)
-
-        DbgMsg(f"Entering {dbgblk}", dbglabel=dbglb)
 
         success = True
 
@@ -3116,12 +3098,10 @@ class VoiceDownload:
 
         myname = f"{conversationID}.wav"
 
-        # path /backup/called-party/timestamp/conversationID
-
         if convoDirection == "Unknown":
             calledpartyname = "radio"
 
-        mypath = os.path.join(self.downloadPath, parentFolder, timestampfldr, conversationID)
+        mypath = os.path.join(self.archive_path, parentFolder, timestampfldr, conversationID)
 
         return myname, mypath
 
@@ -3148,7 +3128,7 @@ class VoiceDownload:
             with open(badRecordings, "at", newline='') as bad:
                 writer = csv.writer(bad)
 
-                row = [ self.ConversationID(), self.Timestamp() ]
+                row = [self.ConversationID(), self.Timestamp()]
 
                 writer.writerow(row)
 
@@ -3201,10 +3181,11 @@ class VoiceDownload:
         return download
 
     def Print(self):
-        print(f"\t: {self.downloadPath}")
-        print(f"\t: {self.filename}")
-        print(f"\t: {self.progress}")
-        print(f"\t: {self.is_bad}")
+        Msg(f"Download Path\t: {self.downloadPath}")
+        Msg(f"Archive Path\t: {self.archive_path}")
+        Msg(f"Filename\t: {self.filename}")
+        Msg(f"Progress\t: {self.progress}")
+        Msg(f"Bad Flag\t: {self.is_bad}")
         self.recording.Print()
 
 
@@ -4350,9 +4331,11 @@ if __name__ == '__main__':
         Username = config["asc_creds"]["username"]
         Password = config["asc_creds"]["password"]
 
-        downloadPath = config["asc"]["downloadpath"]
+        archive_path = config["asc"]["archivepath"]
 
-        sessionASC = config.get(sessionName, "logpath", fallback=sessionASC)
+        sessionASC = config.get(sessionName, "sessionpath", fallback=sessionASC)
+        downloadPath = sessionASC
+
         interval_time = config["asc"]["interval"]
         interval_time = config.get(sessionName, "interval", fallback=interval_time)
 
@@ -4422,13 +4405,16 @@ if __name__ == '__main__':
         if args.env:
             Msg("Environment\n============")
             Msg(f"Download\t: {downloadPath}")
+            Msg(f"Session Name\t : {sessionName}")
+            Msg(f"Session\t\t: {sessionASC}")
+            Msg(f"Archive\t\t: {archive_path}")
             Msg(f"Run log\t\t: {runlog}")
             Msg(f"Catalog\t\t: {catalogFilename}")
             Msg(f"Bad Recs\t: {badRecordings}")
             Msg(f"Start On\t: {startOn}")
             Msg(f"End On\t\t: {endOn}")
         else:
-            asc_browser = ASCBrowser(url, downloadPath)
+            asc_browser = ASCBrowser(url, downloadPath, archive_path)
 
             asc_browser.GetVoiceRecordings(interval, Username, Password)
 
