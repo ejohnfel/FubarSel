@@ -4436,7 +4436,11 @@ if __name__ == '__main__':
         Username = config["asc_creds"]["username"]
         Password = config["asc_creds"]["password"]
 
-        downloadPath = config["asc"]["downloadpath"]
+        archive_path = config["asc"]["archivepath"]
+
+        sessionASC = config.get(sessionName, "sessionpath", fallback=sessionASC)
+        downloadPath = sessionASC
+
         interval = int(config["asc"]["interval"])
         catalogfileName = config["asc"]["catalogfile"]
         badrecordingsName = config["asc"]["badrecordings"]
@@ -4456,7 +4460,7 @@ if __name__ == '__main__':
             if args.clearcat:
                 os.remove(catalogFilename)
 
-        browser = ASCBrowser(urls["asc"], downloadPath)
+        browser = ASCBrowser(urls["asc"], downloadPath, archive_path)
     elif cmd == "packt":
         Username = config["packt_creds"]["username"]
         Password = config["packt_creds"]["password"]
