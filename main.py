@@ -17,7 +17,6 @@ import inspect
 import functools
 from lxml import etree
 import ait
-import py_helper as ph
 
 import asyncio
 import threading
@@ -2050,11 +2049,17 @@ class ASCBrowser(Browser):
 
         return stalled
 
-    def CloseWarning(self):
+    def CloseWarning(self, timeout=0, post_timeout=0):
         """Close Warning Message"""
+
+        if timeout > 0:
+            self.Sleep(timeout)
 
         error_selector = f"{prefix} > span"
         self.ClickAction(Locator(By.CSS_SELECTOR, error_selector))
+
+        if post_timeout:
+            self.Sleep(post_timeout)
 
     def WarningMsg(self, timeout=6):
         """Check for a Warning Popup"""
