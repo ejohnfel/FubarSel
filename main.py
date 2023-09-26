@@ -2207,7 +2207,7 @@ class ASCBrowser(Browser):
 
         try:
             try:
-                # Find "General dropdown
+                # Find General dropdown
                 general = self.ByCSS("a[id='conversationToolbar:commonFunctionsMenuBtn']")
                 self.ClickAction(general)
             except Exception as err:
@@ -2807,7 +2807,11 @@ class ASCBrowser(Browser):
 
                         break
 
-            self.Sleep(3.0)
+            self.Sleep(2.0)
+
+            if needs_refresh:
+                DbgMsg("A refresh was requested", dbglabel=ph.Informational)
+
             DbgMsg("Refreshing browser instance", dbglabel=dbglb)
             self.Refresh()
             self.Sleep(1)
