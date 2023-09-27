@@ -2078,27 +2078,40 @@ class ASCBrowser(Browser):
         msg = None
         warning = None
 
+        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
         try:
             if self.PopoutPresent(10):
                 self.ClosePopOut()
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
             warning = self.WaitPresenceCSS(errorCss, timeout)
             element = warning.element
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             if element is not None and element.displayed and element.enabled:
                 DbgMsg(f"Warning present", dbglabel=dbglb)
 
                 self.Sleep(1.5)
 
-                msg = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errMsg))
+                msg = None
 
-                if msg.displayed and msg.enabled:
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+                errmsg = self.WaitPresenceCSS(errMsg, 5)
+
+                if errmsg.element is not None:
+                    msg = errmsg.element
+
+                if msg is not None and msg.displayed and msg.enabled:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     errmsg = msg.innerText
 
                     DbgMsg(f"Warning is displayed AND enabled on this row'{errmsg}'", dbglabel=dbglb)
                     self.CloseWarning()
                     self.Sleep(3)
                 else:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     DbgMsg(f"Warning detected on this row", dbglabel=dbglb)
                     vismsg = "Is visible" if element.displayed else "Is NOT visible"
                     enamsg = "Is enabled" if element.enabled else "Is NOT enabled"
