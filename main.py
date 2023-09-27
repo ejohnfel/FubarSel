@@ -2055,6 +2055,7 @@ class ASCBrowser(Browser):
         if timeout > 0:
             self.Sleep(timeout)
 
+        prefix = "div[class='headerMessagePanel'] > div > div[id='headerMessages'] > div"
         error_selector = f"{prefix} > span"
         self.ClickAction(Locator(By.CSS_SELECTOR, error_selector))
 
