@@ -2069,7 +2069,7 @@ class ASCBrowser(Browser):
         DbgEnter(dbgblk, dbglb)
 
         # Wait for error, set success to False if error pops up
-        prefix = "div[id='globalHeaderMessage'] > div > div > div[id='headerMessages'] > div"
+        prefix = "div[class='headerMessagePanel'] > div > div[id='headerMessages'] > div"
         errorCss = f"{prefix} > span"
         errMsg = f"{prefix} > ul > li > span[class='ui-messages-error-detail']"
 
@@ -2080,7 +2080,6 @@ class ASCBrowser(Browser):
 
         try:
             if self.PopoutPresent(10):
-                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut()
 
             warning = self.WaitPresenceCSS(errorCss, timeout)
@@ -2093,11 +2092,7 @@ class ASCBrowser(Browser):
 
                 msg = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errMsg))
 
-                if not element.displayed:
-                    self.Second()
-                    element = BaseElement(self.driver, Locator(By.CSS_SELECTOR, errorCss))
-
-                if element.displayed and element.enabled:
+                if msg.displayed and msg.enabled:
                     errmsg = msg.innerText
 
                     DbgMsg(f"Warning is displayed AND enabled on this row'{errmsg}'", dbglabel=dbglb)
