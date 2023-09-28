@@ -1622,20 +1622,18 @@ class ASCBrowser(Browser):
 
         self.SwitchTab(self.ascTab)
 
-        span = "table[id='powpwfteaper27'] > tbody > tr > td > span[id='powpwfteaper28']"
+        span = "tr > td > span[id='powpwfteaper28']"
         anchorID = "a[id='logoutMenuItem']"
 
-        spanobj = self.ByCSS(span)
+        span_locator = Locator(By.CSS_SELECTOR, span)
 
-        WebDriverWait(self.driver, 30).until(presence_of_element_located((By.CSS_SELECTOR, anchorID)))
+        WebDriverWait(self.driver, 30).until(presence_of_element_located(span_locator))
 
-        logoffAnchor = self.ByCSS(anchorID)
+        self.ClickAction(span_locator)
 
-        self.ClickAction(spanobj)
-
-        WebDriverWait(self.driver, 30).until(visibility_of(logoffAnchor))
-
-        self.ClickAction(logoffAnchor)
+        logoff_locator = Locator(By.CSS_SELECTOR, anchorID)
+        WebDriverWait(self.driver, 30).until(visibility_of(logoff_locator))
+        self.ClickAction(logoff_locator)
 
         DbgExit(dbgblk, dbglb)
 
