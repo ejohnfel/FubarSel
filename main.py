@@ -949,6 +949,44 @@ class SeleniumBase(SleepShortCuts):
 
         return flag
 
+    def Present(self, item, value=None, timeout=0, post_timeout=0):
+        """Determine if Element is Present"""
+
+        present_flag = False
+        locator = item
+
+        if timeout > 0:
+            self.Sleep(timeout)
+
+        if type(item) is not Locator:
+            locator = Locator(item,value)
+
+        try:
+            element = self.FindElement(locator.by, locator.value)
+
+            if element is not None:
+                present_flag = True
+        except:
+            present_flag = False
+
+        if post_timeout > 0:
+            self.Sleep(post_timeout)
+
+        return present_flag
+
+    def PresentVisibleAndEnabled(self, item, value=None, timeout=0, post_timeout=0):
+        """Determine if Element is Present, Enabled and Visible"""
+
+        presentve_flag = self.Present(item, value, timeout, post_timeout=0)
+
+        if presentve_flag:
+            presentve_flag = self.VisibleAndEnabled(item, value=value, timeout=0, max_attempts=2)
+
+        if post_timeout > 0:
+            self.Sleep(post_timeout)
+
+        return presentve_flag
+
     def WaitUntil(self, expected_condition, timeout=5, poll_frequency=0.5, ignored_exceptions=None):
         """Generic Wait Until"""
 
@@ -2042,7 +2080,6 @@ class ASCBrowser(Browser):
 
         if stalled and DebugMode():
             DbgMsg(f"Stalled on rowkey {rowkey}", dbglabel=dbglb)
-            dynBreak.Break(dbgblk)
             if DebugMode():
                 breakpoint()
 
@@ -2053,12 +2090,21 @@ class ASCBrowser(Browser):
     def CloseWarning(self, timeout=0, post_timeout=0):
         """Close Warning Message"""
 
-        if timeout > 0:
-            self.Sleep(timeout)
-
         prefix = "div[class='headerMessagePanel'] > div > div[id='headerMessages'] > div"
         error_selector = f"{prefix} > span"
-        self.ClickAction(Locator(By.CSS_SELECTOR, error_selector))
+
+        try:
+            locator = Locator(By.CSS_SELECTOR, error_selector)
+            if self.PresentVisibleAndEnabled(locator, timeout=timeout):
+                self.ClickAction(locator)
+        except StaleElementReferenceException as se_err:
+            pass
+        except NoSuchElementException as nse_err:
+            pass
+        except ElementNotInteractableException as ni_err:
+            pass
+        except Exception as err:
+            pass
 
         if post_timeout:
             self.Sleep(post_timeout)
@@ -2080,18 +2126,13 @@ class ASCBrowser(Browser):
         msg = None
         warning = None
 
-        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
-
         try:
             if self.PopoutPresent(10):
                 self.ClosePopOut()
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
-
             warning = self.WaitPresenceCSS(errorCss, timeout)
             element = warning.element
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             if element is not None and element.displayed and element.enabled:
                 DbgMsg(f"Warning present", dbglabel=dbglb)
 
@@ -2099,14 +2140,12 @@ class ASCBrowser(Browser):
 
                 msg = None
 
-                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 errmsg = self.WaitPresenceCSS(errMsg, 5)
 
                 if errmsg.element is not None:
                     msg = errmsg.element
 
                 if msg is not None and msg.displayed and msg.enabled:
-                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                     errmsg = msg.innerText
 
                     DbgMsg(f"Warning is displayed AND enabled on this row'{errmsg}'", dbglabel=dbglb)
@@ -2146,11 +2185,13 @@ class ASCBrowser(Browser):
 
         success = True
         needs_refresh = False
+        response = "No warning detected"
 
-        line = -1
+        if rowkey =='dbe4fdd3-ab9f-4e06-a46d-8f2e2daecea9':
+            breakpoint()
 
         try:
-            if self.PopoutPresent(5):
+            if self.PopoutPresent(10):
                 self.ClosePopOut(self.mainFrame)
 
             self.BusySpinnerPresent(True)
@@ -2179,21 +2220,15 @@ class ASCBrowser(Browser):
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
 
-            if DebugMode():
-                DbgMsg("So your trace", dbglabel=ph.Informational)
-                breakpoint()
-
         self.Half()
-
-        self.PausePlayer(timeout=3)
 
         retry = True
         retry_count = 0
 
         while retry and retry_count < 3:
-            response = self.WarningMsg(timeout=3)
+            response_msg = self.WarningMsg(timeout=3)
 
-            success = (response == "")
+            success = (response_msg == "")
 
             if success:
                 try:
@@ -2202,12 +2237,12 @@ class ASCBrowser(Browser):
                 except:
                     retry_count += 1
             else:
-                self.CloseWarning(post_timeout=3)
-
+                # Warning Message Popped Up, Recording is not retrievable
+                break
 
         DbgExit(dbgblk, dbglb)
 
-        return success, needs_refresh
+        return success, response_msg, needs_refresh
 
     def Search(self, startDate, endDate):
         """Set and Conduct Search"""
@@ -2460,8 +2495,6 @@ class ASCBrowser(Browser):
         rowkey = recording.rowkey
         row = None
 
-        last_rowkey = last_processed.recording.rowkey if last_processed is not None else None
-
         if frame_name is not None:
             self.SwitchFrame(frame_name)
 
@@ -2474,7 +2507,7 @@ class ASCBrowser(Browser):
             self.Half()
 
             # Activate Row
-            success, needs_refresh = self.ActivateRow(rowkey)
+            success, warning_msg, needs_refresh = self.ActivateRow(rowkey)
 
             self.Half()
 
@@ -2484,35 +2517,33 @@ class ASCBrowser(Browser):
                 success, reason = self.BeginDownload()
 
                 if not success:
-                    global_temp = (f"Save failed : {reason}", rowkey)
-
                     success = False
                     voice_recording.AddToBad()
 
                     recording.data["Archived"] = f"Audio Unavailable/Not Archived/{reason}"
                     AppendRows(catalogFilename, recording.data)
                     Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded because, {reason}")
-                elif last_rowkey is not None:
+                else:
                     self.Half()
 
-                    stalled = self.StalledDownload(rowkey=last_rowkey)
+                    stalled = self.StalledDownload(rowkey=rowkey)
 
                     if stalled:
-                        last_processed.AddToBad()
-                        last_processed.progress = 100
+                        success = False
+                        voice_recording.AddToBad()
+                        voice_recording.progress = 100
 
                         Msg(f"Record {rowkey} for {recording.data['Start Time']} was not downloaded because it stalled")
 
-                        return success
+                        return success, needs_refresh
             else:
                 if not needs_refresh:
-                    global_temp = ("activation failed", rowkey)
-                    Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded")
+                    Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded. {warning_msg}")
 
                     voice_recording.AddToBad()
 
                     recording.data["Archived"] = "Damaged/Not Archived"
-                    recording.data["Expanded"] = "Warning received before download"
+                    recording.data["Expanded"] = f"Warning received before download. {warning_msg}"
                     AppendRows(catalogFilename, recording.data)
         except Exception as err:
             # check rowkey and list of rows
