@@ -1822,11 +1822,14 @@ class ASCBrowser(Browser):
 
         blank = False
 
-        for column_value in recording.data.values():
-            if column_value is not None and column_value != "":
-                break
-        else:
+        if recording.data is None:
             blank = True
+        else:
+            for column_value in recording.data.values():
+                if column_value is not None and column_value != "":
+                    break
+            else:
+                blank = True
 
         return blank
 
