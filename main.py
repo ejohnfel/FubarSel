@@ -2187,24 +2187,28 @@ class ASCBrowser(Browser):
         needs_refresh = False
         response = "No warning detected"
 
-        if rowkey =='dbe4fdd3-ab9f-4e06-a46d-8f2e2daecea9':
-            breakpoint()
-
+        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
         try:
             if self.PopoutPresent(10):
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut(self.mainFrame)
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             self.BusySpinnerPresent(True)
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             row = BaseElement(self.driver, Locator(By.XPATH, f"//tr[@data-rk='{rowkey}']"))
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             self.DoubleClickActionObj(row)
 
             self.Second()
 
             time_check = datetime.now()
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(60):
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut(self.mainFrame)
 
                 duration = datetime.now() - time_check
@@ -2219,6 +2223,8 @@ class ASCBrowser(Browser):
                     self.Second()
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
+            if DebugMode():
+                DbgMsg(f"Line Number error occurred on: {lineno}", dbglabel=ph.Informational)
 
         self.Half()
 
