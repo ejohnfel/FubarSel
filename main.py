@@ -2185,30 +2185,24 @@ class ASCBrowser(Browser):
 
         success = True
         needs_refresh = False
-        response = "No warning detected"
+        response_msg = ""
 
-        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
         try:
             if self.PopoutPresent(10):
                 lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut(self.mainFrame)
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             self.BusySpinnerPresent(True)
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             row = BaseElement(self.driver, Locator(By.XPATH, f"//tr[@data-rk='{rowkey}']"))
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             self.DoubleClickActionObj(row)
 
             self.Second()
 
             time_check = datetime.now()
 
-            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
             if self.PopoutPresent(60):
-                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut(self.mainFrame)
 
                 duration = datetime.now() - time_check
@@ -2218,13 +2212,11 @@ class ASCBrowser(Browser):
                     needs_refresh = True
                     success = False
 
-                    return success, needs_refresh
+                    return success, response_msg, needs_refresh
                 else:
                     self.Second()
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
-            if DebugMode():
-                DbgMsg(f"Line Number error occurred on: {lineno}", dbglabel=ph.Informational)
 
         self.Half()
 
@@ -2240,7 +2232,7 @@ class ASCBrowser(Browser):
                 try:
                     self.PausePlayer(timeout=2)
                     retry = False
-                except:
+                except Exception as err:
                     retry_count += 1
             else:
                 # Warning Message Popped Up, Recording is not retrievable
