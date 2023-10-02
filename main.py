@@ -2187,12 +2187,16 @@ class ASCBrowser(Browser):
         needs_refresh = False
         response_msg = ""
 
+        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
         try:
             if self.PopoutPresent(10):
                 lineno = inspect.getframeinfo(inspect.currentframe()).lineno
                 self.ClosePopOut(self.mainFrame)
 
             self.BusySpinnerPresent(True)
+
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
 
             row = BaseElement(self.driver, Locator(By.XPATH, f"//tr[@data-rk='{rowkey}']"))
 
@@ -2202,7 +2206,11 @@ class ASCBrowser(Browser):
 
             time_check = datetime.now()
 
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
             if self.PopoutPresent(60):
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                 self.ClosePopOut(self.mainFrame)
 
                 duration = datetime.now() - time_check
@@ -2212,11 +2220,14 @@ class ASCBrowser(Browser):
                     needs_refresh = True
                     success = False
 
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                     return success, response_msg, needs_refresh
                 else:
                     self.Second()
         except Exception as err:
             ErrMsg(err, "An error occurred while trying to activate a row")
+            DbgMsg(f"Failed on {lineno}", ph.Informational)
 
         self.Half()
 
@@ -2224,12 +2235,16 @@ class ASCBrowser(Browser):
         retry_count = 0
 
         while retry and retry_count < 3:
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
             response_msg = self.WarningMsg(timeout=3)
 
             success = (response_msg == "")
 
             if success:
                 try:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                     self.PausePlayer(timeout=2)
                     retry = False
                 except Exception as err:
@@ -2493,16 +2508,26 @@ class ASCBrowser(Browser):
         rowkey = recording.rowkey
         row = None
 
+        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
         if frame_name is not None:
             self.SwitchFrame(frame_name)
 
         try:
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
             if self.PopoutPresent(3):
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                 self.ClosePopOut(frame_name)
+
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
 
             self.BusySpinnerPresent(True)
 
             self.Half()
+
+            lineno = inspect.getframeinfo(inspect.currentframe()).lineno
 
             # Activate Row
             success, warning_msg, needs_refresh = self.ActivateRow(rowkey)
@@ -2512,9 +2537,13 @@ class ASCBrowser(Browser):
             if success:
                 DbgMsg(f"Attempting download of {rowkey} from {voice_recording.Timestamp()}", dbglabel=ph.Informational)
 
+                lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                 success, reason = self.BeginDownload()
 
                 if not success:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                     success = False
                     voice_recording.AddToBad()
 
@@ -2524,9 +2553,13 @@ class ASCBrowser(Browser):
                 else:
                     self.Half()
 
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                     stalled = self.StalledDownload(rowkey=rowkey)
 
                     if stalled:
+                        lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                         success = False
                         voice_recording.AddToBad()
                         voice_recording.progress = 100
@@ -2536,6 +2569,8 @@ class ASCBrowser(Browser):
                         return success, needs_refresh
             else:
                 if not needs_refresh:
+                    lineno = inspect.getframeinfo(inspect.currentframe()).lineno
+
                     Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded. {warning_msg}")
 
                     voice_recording.AddToBad()
@@ -2546,6 +2581,7 @@ class ASCBrowser(Browser):
         except Exception as err:
             # check rowkey and list of rows
             Msg(f"Could not activate row with rowkey {rowkey} : {err}")
+            DbgMsg(f"Failed on {lineno}", dbglabel=ph.Informational)
 
         last_processed = voice_recording
 
