@@ -2569,15 +2569,22 @@ class ASCBrowser(Browser):
                         return success, needs_refresh
             else:
                 if not needs_refresh:
+                    problem_warnings = ["A different command is currently processed.",
+                                        "An error has occurred while searching (error:20403)"]
+
                     lineno = inspect.getframeinfo(inspect.currentframe()).lineno
 
-                    Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded. {warning_msg}")
+                    if warning_msg in problem_warnings:
+                        # Should work to start a refresh cycle, success should already be false
+                        needs_refresh = True
+                    else:
+                        Msg(f"Record {rowkey} for {recording.data['Start Time']} could not be downloaded. {warning_msg}")
 
-                    voice_recording.AddToBad()
+                        voice_recording.AddToBad()
 
-                    recording.data["Archived"] = "Damaged/Not Archived"
-                    recording.data["Expanded"] = f"Warning received before download. {warning_msg}"
-                    AppendRows(catalogFilename, recording.data)
+                        recording.data["Archived"] = "Damaged/Not Archived"
+                        recording.data["Expanded"] = f"Warning received before download. {warning_msg}"
+                        AppendRows(catalogFilename, recording.data)
         except Exception as err:
             # check rowkey and list of rows
             Msg(f"Could not activate row with rowkey {rowkey} : {err}")
