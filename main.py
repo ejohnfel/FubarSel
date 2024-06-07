@@ -1754,7 +1754,7 @@ class ASCBrowser(Browser):
 
         return success
 
-    def ClosePopOut(self, frame_name=None):
+    def ClosePopOut(self, frame_name=None, timeout=5):
         """Close that fucking annoying pop out"""
 
         dbgblk, dbglb = DbgNames(self.ClosePopOut)
@@ -1774,7 +1774,7 @@ class ASCBrowser(Browser):
 
             count = 0
 
-            while not self.PopoutPresent() and count < 2:
+            while not self.PopoutPresent(timeout) and count < 2:
                 self.Half()
                 count += 1
 
@@ -2050,6 +2050,8 @@ class ASCBrowser(Browser):
 
             while result.element is not None and not stalled:
                 self.Quarter()
+
+                self.ClosePopOut(timeout=1)
 
                 result = self.WaitPresenceCSS(saveBoxCss,1)
 
