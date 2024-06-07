@@ -3516,6 +3516,7 @@ class Listing:
         self.name = element.find("./span/b").text
         self.wealth = int(element.find("./p").text)
 
+
 class TrialPage(Browser):
     """Trial of the Stones Page Object"""
 
@@ -3643,11 +3644,13 @@ class TrialPage(Browser):
 
         return BaseElement(self.driver, self.trialStatusLocator)
 
-# Variables
 
+# Variables
 dynBreak = DynamicBreakpoint()
 
+
 dynBreak.AddLabels("ASCBrowser.StalledDownload")
+
 
 mainFrame = "applicationFrame"
 
