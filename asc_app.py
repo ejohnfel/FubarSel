@@ -9,7 +9,8 @@ import shutil
 import argparse
 import configparser
 import subprocess
-import inspect, platform
+import inspect
+import platform
 from datetime import datetime, timedelta
 from pathlib import Path
 import time
@@ -40,6 +41,7 @@ debug_file = None
 flag_file = "stop.txt"
 interactive = False
 
+
 def logwrite(logfile, msg, send_to_console=False, callerframe=None):
     """Write message to Log(s)"""
     
@@ -68,10 +70,11 @@ def logwrite(logfile, msg, send_to_console=False, callerframe=None):
     except Exception as err:
         DbgMsg(f"An error occurred - {err} - With log message {msg}")
 
+
 def Connect(net_path, drv_letter, username, password):
     """Connect to SMB Share"""
     
-    connect_command = [ "net", "use", drv_letter, net_path, r"/persistent:no", f"/user:{username}", password ]
+    connect_command = ["net", "use", drv_letter, net_path, r"/persistent:no", f"/user:{username}", password]
 
     result = None
 
@@ -82,19 +85,21 @@ def Connect(net_path, drv_letter, username, password):
 
     return result
 
+
 def Disconnect(drv_path):
     """Disconnect from SMB Share"""
     
-    disconnect_command = [ "net", "use", drv_path, "/del" ]
+    disconnect_command = ["net", "use", drv_path, "/del"]
 
     result = None
 
     try:
-        result = subprocess.run(drv_path)
+        result = subprocess.run(disconnect_command)
     except Exception as err:
         result = err
 
     return result
+
 
 def CheckPath(path_to_check):
     """Check a path"""
@@ -124,14 +129,16 @@ def CheckPath(path_to_check):
             
     return usable, (retry_count >= max_retry), error
 
+
 def periodic(logfile, msg, delta, last_done):
     """Write Provided Message Periodically"""
 
     if (last_done + delta) <= datetime.now():
-        logwrite(logfile,msg)
+        logwrite(logfile, msg)
         last_done = datetime.now()
 
     return last_done
+
 
 def chkflag(src, dst):
     """Check for early terminate flag"""
@@ -150,11 +157,12 @@ def chkflag(src, dst):
 
     return flag_exists
 
+
 def add_index(entry, dst):
     """Add Entry to index"""
 
     try:
-        index_file = os.path.join(dst,"index.csv")
+        index_file = os.path.join(dst, "index.csv")
 
         guid = None
 
@@ -165,32 +173,33 @@ def add_index(entry, dst):
 
         mode = "a"
 
-        xml_file = os.path.join(guid,".xml")
+        xml_file = os.path.join(guid, ".xml")
 
         if not os.path.exists(index_file):
             mode = "w"
 
-        with open(index_file,mode,newline="") as csvfile:
+        with open(index_file, mode, newline="") as csvfile:
             writer = csv.writer(csvfile)
 
             date_folder = None
 
-            row = [ guid, date_folder ]
+            row = [guid, date_folder]
 
             writer.writerow(row)
     except Exception as err:
         DbgMsg(f"Could not add {dst} to index : {err}")
 
-def indexed(entry,dst):
+
+def indexed(entry, dst):
     """Check to see if source was indexed"""
 
     is_indexed = False
 
-    index_file = os.path.join(dst,"index.csv")
+    index_file = os.path.join(dst, "index.csv")
     guid = os.path.basename(os.path.splitext(entry.name)[0])
 
     if os.path.exists(index_file):
-        with open(index_file,"r",newline="") as csvfile:
+        with open(index_file, "r", newline="") as csvfile:
             reader = csv.reader(csvfile)
 
             for row in reader:
@@ -200,6 +209,7 @@ def indexed(entry,dst):
                     break
 
     return is_indexed
+
 
 def get_missing(logfile, data, source, destination):
     """Getting source files missing from destination"""
@@ -213,7 +223,7 @@ def get_missing(logfile, data, source, destination):
 
     try:
         with os.scandir(src) as srcfldr:
-            with open(data,"w",newline="") as csvfile:
+            with open(data, "w", newline="") as csvfile:
                 writer = csv.writer(csvfile)
                 
                 logwrite(logfile, f"Processing {source} items")
@@ -221,7 +231,7 @@ def get_missing(logfile, data, source, destination):
                 for entry in srcfldr:
                     if entry.is_file():
                         processed += 1
-                        dstfile = os.path.join(dst,entry.name)
+                        dstfile = os.path.join(dst, entry.name)
 
                         path_ok, timeout, error = CheckPath(dst)
 
@@ -229,23 +239,23 @@ def get_missing(logfile, data, source, destination):
                             if not os.path.exists(dstfile):
                                 DbgMsg(f"{entry.name} does not exist in {dst}")
                             
-                                row = [ entry.path, dstfile ]
+                                row = [entry.path, dstfile]
 
                                 writer.writerow(row)
                                 missing_dest += 1
-                            elif not indexed(entry,destination):
+                            elif not indexed(entry, destination):
                                 # In the event the file was copied but preceded the index
-                                add_index(entry, destinations)
+                                add_index(entry, destination)
                             else:
                                 DbgMsg(f"{entry.name} exists in {dst}")
                                 existing += 1
                         elif timeout:
-                            raise FileNotFoundException(f"{dst} check timed out")
+                            raise FileNotFoundError(f"{dst} check timed out")
                         elif error is not None:
-                            raise FileNotFoundException(f"{dst} is unavailable, an error has occurred")
+                            raise FileNotFoundError(f"{dst} is unavailable, an error has occurred")
 
                     if chkflag(source, destination):
-                        logwrite(logfile,"Encountered early terminate flag, terminating")
+                        logwrite(logfile, "Encountered early terminate flag, terminating")
                         completed = False
                             
                         break
@@ -265,6 +275,7 @@ def get_missing(logfile, data, source, destination):
 
     return missing_dest, existing, processed, completed
 
+
 def copy_known_missing(logfile, missing, srv, dst):
     """
     Copy known missing files destination folder.
@@ -281,7 +292,7 @@ def copy_known_missing(logfile, missing, srv, dst):
     delta = timedelta(minutes=10)
     last_logged = datetime.now()
 
-    with open(missing,"r",newline='') as csvfile:
+    with open(missing, "r", newline='') as csvfile:
         reader = csv.reader(csvfile)
 
         for row in reader:
@@ -291,13 +302,13 @@ def copy_known_missing(logfile, missing, srv, dst):
                 DbgMsg(f"Copying {source} to {destination}")
 
                 try:
-                    path_ok,timeout,error = CheckPath(dst)
+                    path_ok, timeout, error = CheckPath(dst)
 
                     if path_ok:
                         logwrite(logfile, f"Copying {source} to {destination} @ {datetime.now()}")
                         shutil.copy(source, destination)
                         copied_count += 1
-                        add_index(source,destination)
+                        add_index(source, destination)
                     elif timeout:
                         raise FileNotFoundError(f"{dst} retries timeout")
                     elif error is not None:
@@ -312,10 +323,10 @@ def copy_known_missing(logfile, missing, srv, dst):
                     break
             else:
                 DbgMsg(f"{destination} appears to already exist")
-                logwrite(logfile,f"{source} appears to exist in {destination}")
+                logwrite(logfile, f"{source} appears to exist in {destination}")
 
-            if chkflag(src,dst):
-                logwrite(logfile,"Encountered early terminate flag, terminating")
+            if chkflag(src, dst):
+                logwrite(logfile, "Encountered early terminate flag, terminating")
                 completed = False
 
                 break
@@ -325,6 +336,7 @@ def copy_known_missing(logfile, missing, srv, dst):
     os.remove(missing)
 
     return copied_count, completed
+
 
 def copy_missing(logfile, src, dst):
     """
@@ -350,13 +362,13 @@ def copy_missing(logfile, src, dst):
             for entry in srcfldr:
                 if entry.is_file():
                     processed += 1
-                    dstfile = os.path.join(dst,entry.name)
+                    dstfile = os.path.join(dst, entry.name)
 
                     # It is implied here that CheckPath will retry the connection for 10 minutes before giving up
                     path_ok, timeout, error = CheckPath(dst)
 
                     if path_ok:
-                        if not os.path.exists(dstfile) or not indexed(entry,dst):
+                        if not os.path.exists(dstfile) or not indexed(entry, dst):
                             DbgMsg(f"{entry.name} does not exist in {dst}")
                             logwrite(logfile, f"Copying {entry.path} to {dst} @ {datetime.now()}")
                         
@@ -374,7 +386,7 @@ def copy_missing(logfile, src, dst):
                         raise FileNotFoundError(f"Path, {dst}, is not accessible")
 
                 if chkflag(src, dst):
-                    logwrite(logfile,"Encountered early terminate flag, terminating")
+                    logwrite(logfile, "Encountered early terminate flag, terminating")
                     completed = False
                             
                     break
@@ -389,27 +401,29 @@ def copy_missing(logfile, src, dst):
         
         completed = False
 
-    #if not completed:
+    # if not completed:
     #    os.remove(data)
 
     return missing_dest, existing, processed, completed
+
 
 def BuildParser():
     """Build Cmd line Parser"""
 
     parser = argparse.ArgumentParser(prog="F-This", description="Dumb shit to deal with")
-    parser.add_argument("-d","--debug", action="store_true", help="Enter Debug Mode")
+    parser.add_argument("-d", "--debug", action="store_true", help="Enter Debug Mode")
     parser.add_argument("--test", action="store_true", help="Run Test function")
-    parser.add_argument("-c","--check", action="store_true", help="Get stats on folders")
+    parser.add_argument("-c", "--check", action="store_true", help="Get stats on folders")
     parser.add_argument("--config", help="Config.ini Specification")
-    parser.add_argument("-i","--interactive", action="store_true", help="Execute in interactive mode")
-    parser.add_argument("-l","--local", help="Also write to local file")
-    parser.add_argument("-p","--passover", action="store_true", help="Pass over missing file check, go directly to automatic copying")
-    parser.add_argument("-m","--missing", action="store_true", help="If missing file list exists, skip the file scan and use it")
-    #parser.add_argument("--src", help="Source Folder to copy from")
-    #arser.add_argument("--dst", help="Folder to copy to")
+    parser.add_argument("-i", "--interactive", action="store_true", help="Execute in interactive mode")
+    parser.add_argument("-l", "--local", help="Also write to local file")
+    parser.add_argument("-p", "--passover", action="store_true", help="Pass over missing file check, go directly to automatic copying")
+    parser.add_argument("-m", "--missing", action="store_true", help="If missing file list exists, skip the file scan and use it")
+    # parser.add_argument("--src", help="Source Folder to copy from")
+    # parser.add_argument("--dst", help="Folder to copy to")
 
     return parser
+
 
 def ReadConfig(filename):
     """Read Config file"""
@@ -435,8 +449,7 @@ def ReadConfig(filename):
         sim_mode = config_section.getboolean("sim_mode", False)
         
         CmdLineMode(interactive)
-        DebugMode(config_section.getboolean("debugmode",False))
-
+        DebugMode(config_section.getboolean("debugmode", False))
 
         # Source Stuff
         src = source_section.get("src_path", src)
@@ -457,6 +470,7 @@ def ReadConfig(filename):
         
     return cfg
 
+
 def PrintState():
     """Print Internal Variables State(s)"""
 
@@ -473,6 +487,7 @@ def PrintState():
     status = "Empty" if pw is None else "Defined"
     Msg(f"pw\t\t: {status}")
 
+
 def test():
     Msg("Test function invoked")
 
@@ -482,7 +497,7 @@ def test():
     tuname = r"WORKGROUP\ejohnfelt"
     tpw = input("Password for share: ")
     
-    result = Connect(tpath,"S:",tuname,tpw)  # result.returncode == 0 completed successfully
+    result = Connect(tpath, "S:", tuname, tpw)  # result.returncode == 0 completed successfully
 
     # boolean, true if timeout exceeded, Exception encountered
     path_ok, timeout, error = CheckPath(r"S:\storage")
@@ -497,6 +512,7 @@ def test():
     PrintState()
 
     print("Done with test")
+
 
 if __name__ == "__main__":
     CmdLineMode(True)
@@ -515,18 +531,13 @@ if __name__ == "__main__":
     if os.path.exists(config_filename):
         cfg = ReadConfig(config_filename)
 
-    #if args.src is not None:
-    #    src = args.src
-    #if args.dst is not None:
-    #    dst = args.dst
-
     if args.debug:
         DebugMode(args.debug)
 
     DbgMsg("Starting run")
 
-    log=f"{dst}\\{log_filename}"
-    missing_csv=f"{dst}\\{missing_filename}"
+    log = f"{dst}\\{log_filename}"
+    missing_csv = f"{dst}\\{missing_filename}"
 
     copied = 0
     processed = 0
@@ -536,7 +547,7 @@ if __name__ == "__main__":
     if args.test:
         test()
     else:
-        result = Connect(fpath,drv,uname,pw)
+        result = Connect(fpath, drv, uname, pw)
 
         if result is Exception:
             # Failed hard
@@ -549,11 +560,11 @@ if __name__ == "__main__":
             logs.append(logfile)
 
             if args.local is not None:
-                alternative_log = open(args.local,"at")
+                alternative_log = open(args.local, "at")
                 logs.append(alternative_log)
 
             if args.debug:
-                debug_file = open(debug_log,"at")
+                debug_file = open(debug_log, "at")
                 logs.append(debug_file)
                 debug_mode = True
         
@@ -585,7 +596,7 @@ if __name__ == "__main__":
                 except Exception as err:
                     logwrite(logs, f"An error occurred with : {err}")
             else:
-                copied, completed = copy_missing(logs, src, dst)
+                missing_dest, existing, processed, completed = copy_missing(logs, src, dst)
 
             if alternative_log is not None:
                 alternative_log.close()
