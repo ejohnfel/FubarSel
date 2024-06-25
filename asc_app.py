@@ -214,6 +214,10 @@ def indexed(entry, dst):
 def get_missing(logfile, data, source, destination):
     """Getting source files missing from destination"""
 
+    msg = "Entering get_missing()"
+    DbgMsg(msg)
+    logwrite(logfile, msg)
+
     completed = True
     existing = 0
     missing_dest = 0
@@ -244,14 +248,17 @@ def get_missing(logfile, data, source, destination):
                                 writer.writerow(row)
                                 missing_dest += 1
                             elif not indexed(entry, destination):
+                                DbgMsg(f"{entry.name} has been copied, but not in index, adding...")
                                 # In the event the file was copied but preceded the index
                                 add_index(entry, destination)
                             else:
                                 DbgMsg(f"{entry.name} exists in {dst}")
                                 existing += 1
                         elif timeout:
+                            DbgMsg(f"{dst} timed out")
                             raise FileNotFoundError(f"{dst} check timed out")
                         elif error is not None:
+                            DbgMsg(f"{dst} is unavailable for some reason")
                             raise FileNotFoundError(f"{dst} is unavailable, an error has occurred")
 
                     if chkflag(source, destination):
@@ -273,6 +280,8 @@ def get_missing(logfile, data, source, destination):
     if not completed:
         os.remove(data)
 
+    logwrite(logfile, "Exiting get_missing()")
+
     return missing_dest, existing, processed, completed
 
 
@@ -282,7 +291,10 @@ def copy_known_missing(logfile, missing, srv, dst):
     List of missing files supplied in 'missing' list
     """
 
-    DbgMsg("Entering copy_known_missing")
+    msg = "Entering copy_known_missing()"
+
+    DbgMsg(msg)
+    logwrite(logfile, msg)
     
     completed = True
     copied_count = 0
@@ -335,6 +347,8 @@ def copy_known_missing(logfile, missing, srv, dst):
 
     os.remove(missing)
 
+    logwrite(logfile, "Exiting copy_known_missing()")
+
     return copied_count, completed
 
 
@@ -344,6 +358,10 @@ def copy_missing(logfile, src, dst):
 
     Executes by reading the source folder and seeing if the file(s) are in the destination, and then copying the ones that are not.
     """
+
+    msg = "Entering copy_missing()"
+    DbgMsg(msg)
+    logwrite(logfile, msg)
 
     completed = True
     copied_count = 0
@@ -404,6 +422,7 @@ def copy_missing(logfile, src, dst):
     # if not completed:
     #    os.remove(data)
 
+    logwrite(logfile,"Exiting copy_missing()")
     return missing_dest, existing, processed, completed
 
 
