@@ -50,9 +50,9 @@ def logwrite(logfile, msg, send_to_console=False, callerframe=None):
     if callerframe is None:
         callerframe = inspect.currentframe().f_back
 
-        module = callerframe.f_code.co_filename
-        line = callerframe.f_lineno
-        host = platform.node()
+    module = callerframe.f_code.co_filename
+    line = callerframe.f_lineno
+    host = platform.node()
 
     timestamped_msg = f"{datetime.now()} [{host}/{line}/{module}] : {msg}"
     
