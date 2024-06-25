@@ -299,7 +299,10 @@ def copy_known_missing(logfile, missing, srv, dst):
     completed = True
     copied_count = 0
     ignore_debug = False
+
+    logwrite(logfile, "Line counting missing file")
     missing_count = ph.LineCount(missing)
+    logrite(logfile, f"Line counting complete, {missing_count} items")
 
     delta = timedelta(minutes=10)
     last_logged = datetime.now()
@@ -592,6 +595,9 @@ if __name__ == "__main__":
             if args.missing and os.path.exists(missing_csv):
                 copied, completed = copy_known_missing(logs, missing_csv, src, dst)
             elif not args.passover:
+                if args.missing and not os.path.exists(missing_csv):
+                    logwrite(logfile,"Missing flag enabled, but no missing CSV exists... moving on...")
+
                 try:
                     logwrite(logfile, f"Starting scandir - {datetime.now()}")
 
